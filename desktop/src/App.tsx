@@ -8,6 +8,7 @@ import {
   getConfig,
   getProjects,
   probe as apiProbe,
+  setModel as apiSetModel,
 } from './api';
 
 const PROVIDERS: {
@@ -32,13 +33,22 @@ const SUGGESTIONS = [
   '¿Qué hora es?',
 ];
 
+const FALLBACK_MODELS = [
+  'gemini-3.6-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+];
+
 function SettingsView({
   config,
   onConnected,
+  onModelChanged,
   onBack,
 }: {
   config: ConfigInfo | null;
   onConnected: () => void;
+  onModelChanged: () => void;
   onBack: () => void;
 }) {
   const [keys, setKeys] = useState<Record<string, string>>({});
@@ -46,6 +56,7 @@ function SettingsView({
   const [msg, setMsg] = useState('');
   const [scanning, setScanning] = useState(false);
   const [report, setReport] = useState<ProbeReport | null>(null);
+  const [modelMsg, setModelMsg] = useState('');
 
   const connect = async (id: string) => {
     setBusyProvider(id);
@@ -77,6 +88,25 @@ function SettingsView({
       setScanning(false);
     }
   };
+
+  const pickModel = async (model: string) => {
+    setModelMsg('');
+    try {
+      const res = await apiSetModel(model);
+      if (res.ok) {
+        setModelMsg(`✓ Modelo activo: ${res.model}`);
+        onModelChanged();
+      } else {
+        setModelMsg(`⚠ ${res.error}`);
+      }
+    } catch (e) {
+      setModelMsg(`⚠ ${String(e)}`);
+    }
+  };
+
+  const availableModels =
+    report && report.results.filter((r) => r.status === 'ok').map((r) => r.model);
+  const modelList = availableModels && availableModels.length > 0 ? availableModels : FALLBACK_MODELS;
 
   return (
     <div className="settings">
@@ -125,6 +155,25 @@ function SettingsView({
             </div>
           </div>
         ))}
+      </div>
+
+      <h2 className="section-title">Modelo</h2>
+      <div className="card">
+        <div className="billing">
+          Activo: <b>{config?.model ?? '—'}</b>
+        </div>
+        <div className="model-list">
+          {modelList.map((m) => (
+            <button
+              key={m}
+              className={m === config?.model ? 'model active' : 'model'}
+              onClick={() => pickModel(m)}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+        {modelMsg && <div className="msg">{modelMsg}</div>}
       </div>
 
       <h2 className="section-title">Escaneo de modelos</h2>
@@ -299,20 +348,22 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [projects, setProjects] = useState<string[]>([]);
   const [project, setProject] = useState<string | null>(null);
+  const [session, setSession] = useState(0);
   const clientRef = useRef<DaemonClient | null>(null);
+  if (!clientRef.current) {
+    clientRef.current = new DaemonClient((s, c) => {
+      setStatus(s);
+      setConnected(c);
+    });
+  }
 
   useEffect(() => {
     getConfig()
       .then(setConfig)
       .catch(() => setStatus('Daemon no disponible (python main.py)'));
     getProjects().then(setProjects).catch(() => undefined);
-    const client = new DaemonClient((s, c) => {
-      setStatus(s);
-      setConnected(c);
-    });
-    clientRef.current = client;
-    client.connect();
-    return () => client.disconnect();
+    clientRef.current?.connect();
+    return () => clientRef.current?.disconnect();
   }, []);
 
   const refresh = useCallback(() => {
@@ -329,7 +380,7 @@ export default function App() {
           <span className="brand-name">AgentRelay</span>
           <span className="brand-ver">v0.1</span>
         </div>
-        <button className="new-task" onClick={() => setView('chat')}>
+        <button className="new-task" onClick={() => { setSession((s) => s + 1); setView('chat'); }}>
           + Nueva tarea
         </button>
         <nav className="nav">
@@ -364,24 +415,26 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {view === 'chat' ? (
+        {view === 'chat' && clientRef.current ? (
           <ChatView
+            key={session}
             config={config}
-            client={clientRef.current!}
+            client={clientRef.current}
             status={status}
             connected={connected}
             project={project}
           />
-        ) : (
+        ) : view === 'settings' ? (
           <SettingsView
             config={config}
             onConnected={() => {
               refresh();
               setView('chat');
             }}
+            onModelChanged={refresh}
             onBack={() => setView('chat')}
           />
-        )}
+        ) : null}
       </main>
     </div>
   );

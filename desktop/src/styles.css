@@ -547,6 +547,25 @@ button:disabled {
   margin-top: 8px;
 }
 
+.model-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.model-list .model {
+  border-radius: 20px;
+  padding: 6px 13px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.model-list .model.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .msg {
   margin-top: 8px;
   font-size: 13px;

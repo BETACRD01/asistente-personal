@@ -101,6 +101,22 @@ def configure(body: dict):
     return {"ok": True, "provider": provider, "model": info["model"]}
 
 
+@app.post("/api/model")
+def set_model(body: dict):
+    """Cambia el modelo activo (escribe LLM_MODEL y lo aplica en memoria)."""
+    import configure as cfg
+
+    model = (body.get("model") or "").strip()
+    if not model:
+        return {"ok": False, "error": "falta modelo"}
+    env = cfg.read_env()
+    env["LLM_MODEL"] = model
+    cfg.write_env(env)
+    settings.llm_model = model
+    logger.info("modelo cambiado a %s", model)
+    return {"ok": True, "model": model}
+
+
 @app.websocket("/ws")
 async def ws(websocket: WebSocket):
     from main import handle_command

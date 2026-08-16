@@ -55,6 +55,15 @@ export async function configure(provider: string, key?: string): Promise<Configu
   return res.json();
 }
 
+export async function setModel(model: string): Promise<ConfigureResponse> {
+  const res = await fetch(`${BASE}/api/model`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  });
+  return res.json();
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
