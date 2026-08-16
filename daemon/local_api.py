@@ -101,6 +101,39 @@ def configure(body: dict):
     return {"ok": True, "provider": provider, "model": info["model"]}
 
 
+@app.get("/api/account")
+def account():
+    """Cuenta de Google activa en esta Mac (para login personal)."""
+    email = ""
+    try:
+        r = subprocess.run(
+            ["gcloud", "config", "get-value", "account"],
+            capture_output=True, text=True, timeout=10,
+        )
+        email = (r.stdout or "").strip()
+        if email in ("", "(unset)", "None"):
+            email = ""
+    except Exception as exc:
+        logger.warning("no se pudo leer cuenta gcloud: %s", exc)
+    return {"ok": True, "email": email, "logged": bool(email)}
+
+
+@app.post("/api/login")
+def login():
+    """Inicia sesion con la cuenta de Google (abre el navegador, OAuth de gcloud)."""
+    import subprocess
+
+    try:
+        r = subprocess.run(
+            ["gcloud", "auth", "application-default", "login", "--force"],
+            capture_output=True, text=True, timeout=180,
+        )
+        ok = r.returncode == 0
+        return {"ok": ok, "error": None if ok else (r.stderr or r.stdout or "error al iniciar sesion")[:300]}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:300]}
+
+
 @app.post("/api/model")
 def set_model(body: dict):
     """Cambia el modelo activo (escribe LLM_MODEL y lo aplica en memoria)."""

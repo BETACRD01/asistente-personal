@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AccountInfo,
   ChatMessage,
   ConfigInfo,
   DaemonClient,
   ProbeReport,
   configure as apiConfigure,
+  getAccount as apiGetAccount,
   getConfig,
   getProjects,
+  login as apiLogin,
   probe as apiProbe,
   setModel as apiSetModel,
 } from './api';
@@ -52,6 +55,27 @@ function SettingsView({
   const [scanning, setScanning] = useState(false);
   const [report, setReport] = useState<ProbeReport | null>(null);
   const [modelMsg, setModelMsg] = useState('');
+  const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  useEffect(() => {
+    apiGetAccount().then(setAccount).catch(() => undefined);
+  }, []);
+
+  const doLogin = async () => {
+    setLoginBusy(true);
+    setMsg('');
+    try {
+      const res = await apiLogin();
+      const acct = await apiGetAccount();
+      setAccount(acct);
+      setMsg(res.ok ? `✓ Sesión iniciada: ${acct.email ?? ''}` : `⚠ ${res.error}`);
+    } catch (e) {
+      setMsg(`⚠ ${String(e)}`);
+    } finally {
+      setLoginBusy(false);
+    }
+  };
 
   const connect = async (id: string) => {
     setBusyProvider(id);
@@ -120,6 +144,16 @@ function SettingsView({
           )}
         </div>
       )}
+
+      <h2 className="section-title">Cuenta</h2>
+      <div className="card">
+        <div className="billing">
+          Cuenta de Google: <b>{account?.email || 'No iniciada'}</b>
+        </div>
+        <button className="primary" onClick={doLogin} disabled={loginBusy}>
+          {loginBusy ? 'Iniciando sesión…' : account?.logged ? 'Cambiar cuenta / iniciar sesión' : 'Iniciar sesión con Google'}
+        </button>
+      </div>
 
       <h2 className="section-title">Proveedor y API key</h2>
       <div className="providers">

@@ -28,6 +28,13 @@ export interface ConfigureResponse {
   error?: string;
 }
 
+export interface AccountInfo {
+  ok: boolean;
+  email?: string;
+  logged: boolean;
+  error?: string;
+}
+
 const BASE = 'http://127.0.0.1:8765';
 
 export async function getProjects(): Promise<string[]> {
@@ -64,6 +71,16 @@ export async function setModel(model: string): Promise<ConfigureResponse> {
   return res.json();
 }
 
+export async function getAccount(): Promise<AccountInfo> {
+  const res = await fetch(`${BASE}/api/account`);
+  return res.json();
+}
+
+export async function login(): Promise<AccountInfo> {
+  const res = await fetch(`${BASE}/api/login`, { method: 'POST' });
+  return res.json();
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -89,9 +106,9 @@ export class DaemonClient {
     if (this.ws && this.ws.readyState <= WebSocket.OPEN) {
       return;
     }
-    this.onStatus('Conectando al daemon local...', false);
+    this.onStatus('Conectando...', false);
     this.ws = new WebSocket('ws://127.0.0.1:8765/ws');
-    this.ws.onopen = () => this.onStatus('Conectado al daemon local', true);
+    this.ws.onopen = () => this.onStatus('Conectado', true);
     this.ws.onclose = () => {
       this.onStatus('Desconectado. Reintentando...', false);
       this.ws = null;
