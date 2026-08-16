@@ -285,6 +285,7 @@ body {
 .bubble {
   margin-bottom: 14px;
   max-width: 78%;
+  width: fit-content;
 }
 
 .bubble.user {
