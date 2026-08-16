@@ -5,10 +5,12 @@ bloqueado a nivel de runtime para que la cuenta de Google nunca sea cobrada.
 """
 
 import logging
+import re
+import time
 
 import litellm
 
-from config import settings
+from config import DEFAULT_MODELS, settings
 
 logger = logging.getLogger("daemon.llm")
 
@@ -16,6 +18,11 @@ _REFUSAL = (
     "Modo free_only: Vertex AI factura tu cuenta de cloud y esta bloqueado. "
     "Usa un proveedor gratuito (gemini, ollama) o confirma el pago por sesion."
 )
+
+_MAX_ATTEMPTS = 3
+_FALLBACKS = {
+    "gemini": ["gemini-3.6-flash", "gemini-3.1-flash-lite"],
+}
 
 
 def _vertex_blocked() -> bool:
@@ -30,13 +37,50 @@ def _vertex_blocked() -> bool:
     return billing is not False  # activo o desconocido => bloqueado
 
 
-def complete(prompt: str, stream: bool = False):
-    """Genera una respuesta del LLM configurado (estilo opencode: un proveedor a la vez)."""
-    if _vertex_blocked():
-        logger.warning("vertex_ai bloqueado en modo free_only (billing activo/desconocido)")
-        raise RuntimeError(_REFUSAL)
+def _is_transient(message: str) -> bool:
+    """Errores temporales que merecen reintento (503/429/cuota/saturacion)."""
+    low = message.lower()
+    return any(
+        k in low
+        for k in (
+            "503",
+            "429",
+            "high demand",
+            "unavailable",
+            "resource_exhausted",
+            "rate limit",
+            "try again later",
+            "quota",
+            "exceeded your current quota",
+        )
+    )
 
-    kwargs: dict = {"model": settings.litellm_model, "messages": [{"role": "user", "content": prompt}]}
+
+def _retry_wait(message: str) -> float:
+    """Segundos a esperar si el error indica 'retry in Xs' (p. ej. cuota free tier)."""
+    m = re.search(r"retry in ([0-9.]+)s", message, re.IGNORECASE)
+    if m:
+        return min(float(m.group(1)), 30.0)
+    return 0.0
+
+
+def _candidate_models() -> list[str]:
+    """Modelos a probar en orden: el configurado y alternativas del mismo proveedor."""
+    configured = settings.llm_model or DEFAULT_MODELS.get(settings.llm_provider, "")
+    candidates = [configured] if configured else []
+    for extra in _FALLBACKS.get(settings.llm_provider, []):
+        if extra not in candidates:
+            candidates.append(extra)
+    return candidates or ["llama3.2"]
+
+
+def _build_kwargs(prompt: str, model: str) -> dict:
+    # Normaliza el prefijo del proveedor (p. ej. "gemini/") para evitar
+    # que LiteLLM enrute modelos Gemini a Vertex AI por error.
+    if settings.llm_provider == "gemini" and not model.startswith("gemini/"):
+        model = f"gemini/{model}"
+
+    kwargs: dict = {"model": model, "messages": [{"role": "user", "content": prompt}]}
 
     if settings.llm_provider == "ollama":
         kwargs["api_base"] = settings.ollama_host
@@ -55,6 +99,33 @@ def complete(prompt: str, stream: bool = False):
         kwargs["api_key"] = settings.groq_api_key
     elif settings.llm_provider == "openrouter":
         kwargs["api_key"] = settings.openrouter_api_key
+    return kwargs
 
-    logger.info("llm call provider=%s model=%s", settings.llm_provider, settings.litellm_model)
-    return litellm.completion(**kwargs, stream=stream)
+
+def complete(prompt: str, stream: bool = False):
+    """Genera una respuesta del LLM con reintentos y fallback a otro modelo gratuito."""
+    if _vertex_blocked():
+        logger.warning("vertex_ai bloqueado en modo free_only (billing activo/desconocido)")
+        raise RuntimeError(_REFUSAL)
+
+    errors: list[str] = []
+    for model in _candidate_models():
+        kwargs = _build_kwargs(prompt, model)
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            logger.info("llm call provider=%s model=%s intento=%d", settings.llm_provider, model, attempt)
+            try:
+                return litellm.completion(**kwargs, stream=stream)
+            except Exception as exc:
+                msg = str(exc)
+                errors.append(f"{model} (intento {attempt}): {msg[:100]}")
+                if _is_transient(msg) and attempt < _MAX_ATTEMPTS:
+                    wait = _retry_wait(msg)
+                    time.sleep(wait if wait > 0 else attempt)  # espera real o 1s, 2s...
+                else:
+                    break  # error no temporal (o agotados los intentos) => siguiente modelo
+
+    raise RuntimeError(
+        "Todos los modelos gratuitos estan saturados o fallaron. "
+        "Intenta en un momento o cambia de modelo en Ajustes.\n"
+        + " | ".join(errors[-4:])
+    )
