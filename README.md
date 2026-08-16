@@ -2,6 +2,15 @@
 
 Asistente IA móvil que controla tu Mac de forma remota y segura, hablando en lenguaje natural.
 
+<p align="center">
+  <a href="https://github.com/BETACRD01/asistente-personal/actions/workflows/deploy.yml">
+    <img src="https://github.com/BETACRD01/asistente-personal/actions/workflows/deploy.yml/badge.svg" alt="Deploy Status" />
+  </a>
+  <img src="https://img.shields.io/badge/Hub-FastAPI-009688.svg?style=flat&logo=fastapi" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Daemon-Python-3776AB.svg?style=flat&logo=python" alt="Python" />
+  <img src="https://img.shields.io/badge/Mobile-React_Native-61DAFB.svg?style=flat&logo=react" alt="React Native" />
+</p>
+
 ## Arquitectura
 
 ```text
