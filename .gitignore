@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Env / secretos
+.env
+.env.*
+!.env.example
+
+# Flutter / Dart (por si se agrega app movil)
+.dart_tool/
+build/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log

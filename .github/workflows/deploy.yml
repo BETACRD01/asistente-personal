@@ -1,0 +1,64 @@
+name: Deploy Hub to VM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'hub/**'
+
+jobs:
+  deploy:
+    name: Deploy to Google Cloud VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy hub files to VM
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            --exclude='compose.yml' \
+            --exclude='__pycache__/' \
+            --exclude='.env' \
+            ./hub/ ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/opt/agentrelay/
+
+      - name: Create .env file on VM
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            cat > /opt/agentrelay/.env << 'ENVEOF'
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_EXPIRE_HOURS=24
+          DEVICE_TOKENS=${{ secrets.DEVICE_TOKENS }}
+          APP_TOKEN=${{ secrets.APP_TOKEN }}
+          REDIS_URL=redis://127.0.0.1:6379/0
+          ENVEOF
+          chmod 600 /opt/agentrelay/.env
+            "
+
+      - name: Build and restart container with Podman
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            cd /opt/agentrelay &&
+            podman-compose -f /opt/agentrelay/compose.yml down --remove-orphans || true &&
+            podman-compose -f /opt/agentrelay/compose.yml build --no-cache &&
+            podman-compose -f /opt/agentrelay/compose.yml up -d &&
+            echo 'Contenedor reiniciado OK'
+            "
+
+      - name: Health check
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} \
+            "for i in {1..6}; do curl -sf http://127.0.0.1:8200/health && echo ' - Health OK' && exit 0; echo 'Waiting...'; sleep 5; done; exit 1"
