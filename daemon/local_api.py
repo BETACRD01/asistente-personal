@@ -28,6 +28,22 @@ app.add_middleware(
 )
 
 
+@app.get("/api/projects")
+def projects():
+    """Lista carpetas de proyectos (Developer, Desktop, Documents)."""
+    from pathlib import Path
+
+    home = Path.home()
+    found = []
+    for folder in ("Developer", "Desktop", "Documents"):
+        base = home / folder
+        if base.is_dir():
+            for child in sorted(base.iterdir()):
+                if child.is_dir() and not child.name.startswith("."):
+                    found.append(str(child))
+    return {"projects": found}
+
+
 @app.get("/api/config")
 def config():
     from brain.llm import _vertex_blocked

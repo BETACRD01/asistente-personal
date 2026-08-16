@@ -30,6 +30,12 @@ export interface ConfigureResponse {
 
 const BASE = 'http://127.0.0.1:8765';
 
+export async function getProjects(): Promise<string[]> {
+  const res = await fetch(`${BASE}/api/projects`);
+  const data = await res.json();
+  return data.projects ?? [];
+}
+
 export async function getConfig(): Promise<ConfigInfo> {
   const res = await fetch(`${BASE}/api/config`);
   return res.json();

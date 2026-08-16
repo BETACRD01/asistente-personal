@@ -6,6 +6,7 @@ import {
   ProbeReport,
   configure as apiConfigure,
   getConfig,
+  getProjects,
   probe as apiProbe,
 } from './api';
 
@@ -26,19 +27,19 @@ const PROVIDERS: {
 
 const SUGGESTIONS = [
   '¿Cuánta memoria tiene mi Mac?',
-  'Crea una carpeta llamada "codex-test"',
+  'Crea una carpeta llamada "agentrelay-test"',
   'Muestra los archivos del Escritorio',
   '¿Qué hora es?',
 ];
 
-function Setup({
+function SettingsView({
   config,
   onConnected,
-  onProbeReport,
+  onBack,
 }: {
   config: ConfigInfo | null;
   onConnected: () => void;
-  onProbeReport: (r: ProbeReport) => void;
+  onBack: () => void;
 }) {
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [busyProvider, setBusyProvider] = useState<string | null>(null);
@@ -70,7 +71,6 @@ function Setup({
     try {
       const r = await apiProbe();
       setReport(r);
-      onProbeReport(r);
     } catch (e) {
       setMsg(`⚠ Escaneo falló: ${String(e)}`);
     } finally {
@@ -79,76 +79,69 @@ function Setup({
   };
 
   return (
-    <div className="setup">
-      <div className="setup-head">
-        <h1>AgentRelay</h1>
-        <p>Asistente de desarrollo para tu Mac. Conecta un proveedor para empezar.</p>
+    <div className="settings">
+      <div className="settings-head">
+        <button className="link" onClick={onBack}>
+          ← Volver
+        </button>
+        <h1>Ajustes</h1>
       </div>
 
       {config && (
-        <div className="current">
-          <span className="badge">Actual</span>
-          <b>{config.provider}</b> · {config.model} · modo <code>{config.mode}</code>
+        <div className="card current">
+          <b>Proveedor</b> {config.provider} · {config.model} · modo <code>{config.mode}</code>
           {config.vertex_blocked && (
-            <span className="warn">Vertex AI bloqueado (no cobra tu cuenta cloud)</span>
+            <div className="warn">Vertex AI bloqueado — tu cuenta cloud no se cobra</div>
           )}
         </div>
       )}
 
+      <h2 className="section-title">Proveedor y API key</h2>
       <div className="providers">
         {PROVIDERS.map((p) => (
-          <div className="provider-card" key={p.id}>
-            <div className="provider-row">
-              <div>
-                <div className="provider-name">
-                  {p.name} <span className={`badge ${p.badge === 'gratis' ? 'free' : 'paid'}`}>{p.badge}</span>
-                </div>
-                <div className="provider-desc">{p.desc}</div>
-              </div>
+          <div className="card provider" key={p.id}>
+            <div className="provider-name">
+              {p.name} <span className={`badge ${p.badge === 'gratis' ? 'free' : 'paid'}`}>{p.badge}</span>
             </div>
-            {p.needsKey ? (
-              <div className="provider-actions">
-                <input
-                  type="password"
-                  placeholder="Pega tu API key"
-                  value={keys[p.id] || ''}
-                  onChange={(e) => setKeys({ ...keys, [p.id]: e.target.value })}
-                />
-                <button
-                  onClick={() => connect(p.id)}
-                  disabled={busyProvider !== null}
-                >
-                  {busyProvider === p.id ? '...' : 'Conectar'}
-                </button>
-              </div>
-            ) : (
-              <div className="provider-actions">
+            <div className="provider-desc">{p.desc}</div>
+            <div className="provider-actions">
+              {p.needsKey ? (
+                <>
+                  <input
+                    type="password"
+                    placeholder="Pega tu API key"
+                    value={keys[p.id] || ''}
+                    onChange={(e) => setKeys({ ...keys, [p.id]: e.target.value })}
+                  />
+                  <button onClick={() => connect(p.id)} disabled={busyProvider !== null}>
+                    {busyProvider === p.id ? '…' : 'Conectar'}
+                  </button>
+                </>
+              ) : (
                 <button onClick={() => connect(p.id)} disabled={busyProvider !== null}>
-                  {busyProvider === p.id ? '...' : 'Conectar'}
+                  {busyProvider === p.id ? '…' : 'Conectar'}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="scan">
-        <button onClick={scan} disabled={scanning}>
-          {scanning ? 'Escaneando modelos... (~30s)' : '🔍 Escanear modelos disponibles'}
-        </button>
-      </div>
+      <h2 className="section-title">Escaneo de modelos</h2>
+      <button onClick={scan} disabled={scanning} className="scan-btn">
+        {scanning ? 'Escaneando… (~30s)' : '🔍 Escanear modelos disponibles'}
+      </button>
 
       {report && (
-        <div className="probe-report">
-          <h3>Escaneo de la cuenta</h3>
-          <p className="billing">
+        <div className="card report">
+          <div className="billing">
             Billing:{' '}
             {report.billing.known
               ? report.billing.billing_enabled
-                ? 'ACTIVADO (Vertex AI factura)' 
+                ? 'ACTIVADO (Vertex AI factura)'
                 : 'DESACTIVADO (free OK)'
               : `desconocido (${report.billing.reason || '?'})`}
-          </p>
+          </div>
           <table>
             <thead>
               <tr>
@@ -170,9 +163,9 @@ function Setup({
             </tbody>
           </table>
           {report.chosen ? (
-            <p className="chosen">✓ Mejor gratuito: {report.chosen.provider}/{report.chosen.model}</p>
+            <div className="chosen">✓ Mejor gratuito: {report.chosen.provider}/{report.chosen.model}</div>
           ) : (
-            <p className="warn">Sin modelo gratuito disponible en este modo.</p>
+            <div className="warn">Sin modelo gratuito disponible en este modo.</div>
           )}
         </div>
       )}
@@ -182,18 +175,18 @@ function Setup({
   );
 }
 
-function Chat({
+function ChatView({
   config,
   client,
   status,
   connected,
-  onBack,
+  project,
 }: {
   config: ConfigInfo | null;
   client: DaemonClient;
   status: string;
   connected: boolean;
-  onBack: () => void;
+  project: string | null;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -215,9 +208,6 @@ function Chat({
         });
         break;
       }
-      case 'stdout':
-        setBusy(false);
-        break;
       case 'done':
         setBusy(false);
         setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, streaming: false } : x)));
@@ -225,7 +215,11 @@ function Chat({
       case 'error':
         setBusy(false);
         setMessages((prev) =>
-          prev.map((x) => (x.id === m.id ? { ...x, content: x.content + (m.message ?? ''), streaming: false } : x)),
+          prev.map((x) =>
+            x.id === m.id
+              ? { ...x, content: x.content + (m.message ?? ''), streaming: false }
+              : x,
+          ),
         );
         break;
     }
@@ -251,24 +245,17 @@ function Chat({
 
   return (
     <div className="chat">
-      <header className="chat-head">
-        <button className="link" onClick={onBack}>
-          ⚙ Proveedor
-        </button>
-        <div className="chat-brand">
-          <b>AgentRelay</b>
-          <span className="model-chip">
-            {config?.provider}/{config?.model}
-          </span>
-        </div>
+      <div className="chat-top">
+        <div className="project-chip">{project ?? 'Local'}</div>
+        <div className="model-chip">{config?.provider}/{config?.model}</div>
         <div className={`dot ${connected ? 'on' : 'off'}`} title={status} />
-      </header>
+      </div>
 
       <div className="messages" ref={listRef}>
         {messages.length === 0 && (
           <div className="welcome">
             <h2>¿Qué hacemos hoy?</h2>
-            <p>Dame una tarea de desarrollo y yo la ejecuto en tu Mac.</p>
+            <p>Dame una tarea de desarrollo y la ejecuto en tu Mac.</p>
             <div className="chips">
               {SUGGESTIONS.map((s) => (
                 <button key={s} onClick={() => send(s)}>
@@ -293,7 +280,7 @@ function Chat({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
-          placeholder="Escribe una tarea para tu Mac..."
+          placeholder="Escribe una tarea para tu Mac…"
           disabled={!connected}
         />
         <button className="send" onClick={() => send()} disabled={!connected || busy}>
@@ -307,15 +294,18 @@ function Chat({
 
 export default function App() {
   const [config, setConfig] = useState<ConfigInfo | null>(null);
-  const [view, setView] = useState<'setup' | 'chat'>('setup');
-  const [status, setStatus] = useState('Iniciando...');
+  const [view, setView] = useState<'chat' | 'settings'>('chat');
+  const [status, setStatus] = useState('Iniciando…');
   const [connected, setConnected] = useState(false);
+  const [projects, setProjects] = useState<string[]>([]);
+  const [project, setProject] = useState<string | null>(null);
   const clientRef = useRef<DaemonClient | null>(null);
 
   useEffect(() => {
     getConfig()
       .then(setConfig)
-      .catch(() => setStatus('Daemon no disponible. ¿Está corriendo? (python main.py)'));
+      .catch(() => setStatus('Daemon no disponible (python main.py)'));
+    getProjects().then(setProjects).catch(() => undefined);
     const client = new DaemonClient((s, c) => {
       setStatus(s);
       setConnected(c);
@@ -333,27 +323,66 @@ export default function App() {
 
   return (
     <div className="app">
-      {view === 'setup' ? (
-        <Setup
-          config={config}
-          onConnected={() => {
-            refresh();
-            setView('chat');
-          }}
-          onProbeReport={() => refresh()}
-        />
-      ) : (
-        <Chat
-          config={config}
-          client={clientRef.current!}
-          status={status}
-          connected={connected}
-          onBack={() => {
-            refresh();
-            setView('setup');
-          }}
-        />
-      )}
+      <aside className="sidebar">
+        <div className="brand-row">
+          <span className="logo">AR</span>
+          <span className="brand-name">AgentRelay</span>
+          <span className="brand-ver">v0.1</span>
+        </div>
+        <button className="new-task" onClick={() => setView('chat')}>
+          + Nueva tarea
+        </button>
+        <nav className="nav">
+          <button className={view === 'chat' ? 'active' : ''} onClick={() => setView('chat')}>
+            Tareas
+          </button>
+          <button>Programadas</button>
+          <button>Complementos</button>
+        </nav>
+        <div className="section-title">Proyectos</div>
+        <ul className="projects">
+          {projects.map((p) => (
+            <li
+              key={p}
+              className={project === p ? 'active' : ''}
+              onClick={() => setProject(p)}
+              title={p}
+            >
+              {p.split('/').slice(-2).join('/')}
+            </li>
+          ))}
+        </ul>
+        <div className="sidebar-footer">
+          <div className="conn">
+            <span className={`dot ${connected ? 'on' : 'off'}`} />
+            {status}
+          </div>
+          <button className="gear" onClick={() => setView('settings')} title="Ajustes">
+            ⚙
+          </button>
+        </div>
+      </aside>
+
+      <main className="main">
+        {view === 'chat' ? (
+          <ChatView
+            config={config}
+            client={clientRef.current!}
+            status={status}
+            connected={connected}
+            project={project}
+          />
+        ) : (
+          <SettingsView
+            config={config}
+            onConnected={() => {
+              refresh();
+              setView('chat');
+            }}
+            onBack={() => setView('chat')}
+          />
+        )}
+      </main>
     </div>
   );
 }
