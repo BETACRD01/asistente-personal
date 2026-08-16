@@ -59,7 +59,7 @@ class CommandRequest(BaseModel):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "build": "demo-2"}
+    return {"status": "ok", "build": "demo-3"}
 
 
 @app.post("/auth/login")
