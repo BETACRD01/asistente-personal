@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -7,22 +8,34 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useColorScheme,
   View,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatMessage, HubClient } from './src/api/hubClient';
+import MessageBubble from './src/components/MessageBubble';
+import SuggestionChips from './src/components/SuggestionChips';
 import { DEVICE_NAME } from './src/config';
+
+const SUGGESTIONS = [
+  'Abre Safari',
+  '¿Cuánta memoria tiene mi Mac?',
+  'Crea una carpeta llamada "prueba"',
+  '¿Qué hora es?',
+  'Muestra los archivos de Escritorio',
+];
 
 function ChatScreen() {
   const insets = useSafeAreaInsets();
+  const dark = useColorScheme() === 'dark';
   const clientRef = useRef<HubClient | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [status, setStatus] = useState('Conectando...');
+  const [status, setStatus] = useState('Conectando a tu Mac...');
   const [connected, setConnected] = useState(false);
+  const [busy, setBusy] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
-  const streamingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const client = new HubClient();
@@ -31,9 +44,7 @@ function ChatScreen() {
     client
       .login()
       .then(() => {
-        client.setMessageHandler(message => {
-          handleMessage(message);
-        });
+        client.setMessageHandler(message => handleMessage(message));
         client.connect(DEVICE_NAME);
       })
       .catch(error => {
@@ -46,116 +57,146 @@ function ChatScreen() {
     };
   }, []);
 
-  const handleMessage = useCallback((message: ChatMessage | any) => {
-    if (message.type === 'connected') {
-      setStatus('Conectado');
-      setConnected(true);
-      return;
-    }
-    if (message.type === 'reconnecting') {
-      setStatus('Reconectando...');
-      setConnected(false);
-      return;
-    }
-    if (message.type === 'error') {
-      setStatus(message.message || 'Error');
-      setConnected(false);
-      return;
-    }
-    if (message.type === 'token') {
-      const id = message.id;
-      setMessages(prev => {
-        const existing = prev.find(m => m.id === id);
-        if (existing) {
-          return prev.map(m =>
-            m.id === id
-              ? { ...m, content: m.content + (message.content ?? ''), streaming: true }
-              : m,
-          );
-        }
-        streamingIdRef.current = id;
-        return [
-          ...prev,
-          { id, role: 'assistant', content: message.content ?? '', streaming: true },
-        ];
-      });
-    }
-    if (message.type === 'done' || message.type === 'error') {
-      const id = message.id;
-      if (message.type === 'error' && !messages.some(m => m.id === id)) {
-        setMessages(prev => [
-          ...prev,
-          { id, role: 'assistant', content: message.message ?? 'Error', streaming: false },
-        ]);
+  const handleMessage = useCallback((message: any) => {
+    switch (message.type) {
+      case 'connected':
+        setStatus('Conectado a tu Mac');
+        setConnected(true);
+        break;
+      case 'reconnecting':
+        setStatus('Reconectando...');
+        setConnected(false);
+        break;
+      case 'error':
+        setStatus(message.message || 'Error');
+        setConnected(false);
+        break;
+      case 'token': {
+        const id = message.id;
+        setMessages(prev => {
+          const existing = prev.find(m => m.id === id);
+          if (existing) {
+            return prev.map(m =>
+              m.id === id
+                ? { ...m, content: m.content + (message.content ?? ''), streaming: true }
+                : m,
+            );
+          }
+          return [...prev, { id, role: 'assistant', content: message.content ?? '', streaming: true }];
+        });
+        break;
       }
-      setMessages(prev =>
-        prev.map(m => (m.id === id ? { ...m, streaming: false } : m)),
-      );
-      if (streamingIdRef.current === id) {
-        streamingIdRef.current = null;
-      }
-    }
-    if (message.type === 'stdout') {
-      setStatus('Ejecutando en la Mac...');
+      case 'done':
+        setBusy(false);
+        setMessages(prev =>
+          prev.map(m => (m.id === message.id ? { ...m, streaming: false } : m)),
+        );
+        break;
+      case 'error':
+        setBusy(false);
+        setMessages(prev =>
+          prev.map(m => (m.id === message.id ? { ...m, streaming: false } : m)),
+        );
+        break;
+      case 'stdout':
+        setStatus('Ejecutando en tu Mac...');
+        break;
+      default:
+        break;
     }
   }, []);
 
-  const send = () => {
-    const text = input.trim();
-    if (!text || !connected) {
+  const send = (textOverride?: string) => {
+    const text = (textOverride ?? input).trim();
+    if (!text || !connected || busy) {
       return;
     }
     const id = `u${Date.now()}`;
     setMessages(prev => [...prev, { id, role: 'user', content: text }]);
     setInput('');
+    setBusy(true);
     clientRef.current?.sendCommand(DEVICE_NAME, text);
   };
 
+  const sendSuggestion = (text: string) => {
+    if (!connected || busy) {
+      return;
+    }
+    const id = `u${Date.now()}`;
+    setMessages(prev => [...prev, { id, role: 'user', content: text }]);
+    setBusy(true);
+    clientRef.current?.sendCommand(DEVICE_NAME, text);
+  };
+
+  const showWelcome = messages.length === 0;
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Asistente</Text>
-        <View style={[styles.dot, connected ? styles.dotOn : styles.dotOff]} />
-        <Text style={styles.status}>{status}</Text>
+    <View style={[styles.container, dark ? styles.containerDark : null, { paddingTop: insets.top }]}>
+      <View style={[styles.header, dark ? styles.headerDark : null]}>
+        <View style={styles.brand}>
+          <View style={styles.logo}>
+            <Text style={styles.logoText}>🤖</Text>
+          </View>
+          <View>
+            <Text style={[styles.title, dark ? styles.textDark : null]}>Asistente IA</Text>
+            <View style={styles.statusRow}>
+              <View style={[styles.dot, connected ? styles.dotOn : styles.dotOff]} />
+              <Text style={styles.status}>{status}</Text>
+            </View>
+          </View>
+        </View>
+        <Pressable
+          style={[styles.newChat, dark ? styles.chipDark : null]}
+          onPress={() => setMessages([])}>
+          <Text style={[styles.newChatText, dark ? styles.textDark : null]}>✎ Nuevo</Text>
+        </Pressable>
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={item => item.id}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        renderItem={({ item }) => (
-          <View style={[styles.bubble, item.role === 'user' ? styles.user : styles.assistant]}>
-            <Text style={item.role === 'user' ? styles.userText : styles.assistantText}>
-              {item.content}
-              {item.streaming ? '▌' : ''}
-            </Text>
-          </View>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Escribe un comando para tu Mac (ej: "abre Safari")</Text>
-        }
-      />
+      {showWelcome ? (
+        <View style={styles.welcome}>
+          <Text style={[styles.welcomeTitle, dark ? styles.textDark : null]}>
+            ¿En qué te ayudo hoy?
+          </Text>
+          <Text style={styles.welcomeSub}>
+            Controla tu Mac desde aquí: apps, archivos, terminal y más.
+          </Text>
+          <SuggestionChips dark={dark} suggestions={SUGGESTIONS} onSelect={sendSuggestion} />
+        </View>
+      ) : (
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={item => item.id}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+          renderItem={({ item }) => <MessageBubble item={item} dark={dark} />}
+        />
+      )}
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.inputRow}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={insets.top}>
+        <View style={[styles.inputWrap, dark ? styles.inputWrapDark : null]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, dark ? styles.inputDark : null]}
             value={input}
             onChangeText={setInput}
-            placeholder="Escribe un comando..."
-            placeholderTextColor="#8e8e93"
-            onSubmitEditing={send}
+            placeholder="Envía un mensaje a tu Mac..."
+            placeholderTextColor={dark ? '#8e8e93' : '#9d9da3'}
+            onSubmitEditing={() => send()}
             returnKeyType="send"
+            multiline
           />
           <Pressable
-            style={[styles.send, !connected && styles.sendDisabled]}
-            onPress={send}
-            disabled={!connected}>
-            <Text style={styles.sendText}>➤</Text>
+            style={[styles.send, (!connected || busy) && styles.sendDisabled]}
+            onPress={() => send()}
+            disabled={!connected || busy}>
+            {busy ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.sendText}>▲</Text>
+            )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -172,63 +213,85 @@ function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f2f2f7' },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  containerDark: { backgroundColor: '#000000' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#c7c7cc',
+    borderBottomColor: '#e5e5ea',
   },
-  title: { fontSize: 17, fontWeight: '700', color: '#000', marginRight: 10 },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  headerDark: { backgroundColor: '#000000', borderBottomColor: '#2c2c2e' },
+  brand: { flexDirection: 'row', alignItems: 'center' },
+  logo: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#10a37f',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  logoText: { fontSize: 18 },
+  title: { fontSize: 17, fontWeight: '700', color: '#1d1d1f' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  dot: { width: 7, height: 7, borderRadius: 4, marginRight: 5 },
   dotOn: { backgroundColor: '#34c759' },
   dotOff: { backgroundColor: '#ff3b30' },
-  status: { fontSize: 13, color: '#8e8e93', flex: 1 },
-  list: { flex: 1 },
-  listContent: { padding: 16 },
-  empty: { textAlign: 'center', color: '#8e8e93', marginTop: 40, fontSize: 14 },
-  bubble: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 18,
-    marginBottom: 8,
-  },
-  user: { alignSelf: 'flex-end', backgroundColor: '#007aff' },
-  assistant: { alignSelf: 'flex-start', backgroundColor: '#e5e5ea' },
-  userText: { color: '#fff', fontSize: 15 },
-  assistantText: { color: '#000', fontSize: 15 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  status: { fontSize: 12, color: '#6e6e73' },
+  newChat: {
+    backgroundColor: '#ffffff',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e5e5ea',
+    borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
+  },
+  chipDark: { backgroundColor: '#2c2c2e', borderColor: '#3a3a3c' },
+  newChatText: { color: '#1d1d1f', fontSize: 13, fontWeight: '600' },
+  welcome: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
+  welcomeTitle: { fontSize: 22, fontWeight: '700', color: '#1d1d1f', marginBottom: 8 },
+  welcomeSub: { fontSize: 14, color: '#6e6e73', lineHeight: 20 },
+  list: { flex: 1 },
+  listContent: { padding: 16, paddingBottom: 24 },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     backgroundColor: '#ffffff',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#c7c7cc',
+    borderTopColor: '#e5e5ea',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  inputWrapDark: { backgroundColor: '#000000', borderTopColor: '#2c2c2e' },
   input: {
     flex: 1,
-    backgroundColor: '#f2f2f7',
-    borderRadius: 18,
+    backgroundColor: '#f5f5f7',
+    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 10,
+    paddingBottom: 10,
     fontSize: 15,
-    color: '#000',
+    color: '#1d1d1f',
+    maxHeight: 120,
     marginRight: 8,
   },
+  inputDark: { backgroundColor: '#2c2c2e', color: '#ffffff' },
   send: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#007aff',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#10a37f',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendDisabled: { backgroundColor: '#c7c7cc' },
-  sendText: { color: '#fff', fontSize: 16 },
+  sendText: { color: '#ffffff', fontSize: 15 },
+  textDark: { color: '#ffffff' },
 });
 
 export default App;
