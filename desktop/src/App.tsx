@@ -241,6 +241,7 @@ function ChatView({
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const streamingNow = messages.some((m) => m.streaming);
 
   const handleWs = useCallback((m: any) => {
     switch (m.type) {
@@ -322,6 +323,13 @@ function ChatView({
             </div>
           </div>
         ))}
+        {busy && !streamingNow && (
+          <div className="bubble assistant typing" aria-label="procesando">
+            <div className="bubble-text">
+              <span className="dots"><span /><span /><span /></span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="input-bar">

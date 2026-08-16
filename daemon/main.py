@@ -19,7 +19,6 @@ async def handle_command(message: dict):
     command_id = message.get("id", "?")
     text = message.get("text", "")
     logger.info("comando %s: %s", command_id, text)
-    yield {"type": "token", "id": command_id, "content": "Procesando..."}
 
     try:
         result = await agent.ainvoke({"command": text})
