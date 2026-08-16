@@ -4,13 +4,11 @@ import {
   ChatMessage,
   ConfigInfo,
   DaemonClient,
-  ProbeReport,
   configure as apiConfigure,
   getAccount as apiGetAccount,
   getConfig,
   getProjects,
   login as apiLogin,
-  probe as apiProbe,
   setModel as apiSetModel,
 } from './api';
 
@@ -52,8 +50,6 @@ function SettingsView({
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [busyProvider, setBusyProvider] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
-  const [scanning, setScanning] = useState(false);
-  const [report, setReport] = useState<ProbeReport | null>(null);
   const [modelMsg, setModelMsg] = useState('');
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [loginBusy, setLoginBusy] = useState(false);
@@ -95,19 +91,6 @@ function SettingsView({
     }
   };
 
-  const scan = async () => {
-    setScanning(true);
-    setMsg('');
-    try {
-      const r = await apiProbe();
-      setReport(r);
-    } catch (e) {
-      setMsg(`⚠ Escaneo falló: ${String(e)}`);
-    } finally {
-      setScanning(false);
-    }
-  };
-
   const pickModel = async (model: string) => {
     setModelMsg('');
     try {
@@ -122,10 +105,6 @@ function SettingsView({
       setModelMsg(`⚠ ${String(e)}`);
     }
   };
-
-  const availableModels =
-    report && report.results.filter((r) => r.status === 'ok').map((r) => r.model);
-  const modelList = availableModels && availableModels.length > 0 ? availableModels : FALLBACK_MODELS;
 
   return (
     <div className="settings">
@@ -192,7 +171,7 @@ function SettingsView({
           Activo: <b>{config?.model ?? '—'}</b>
         </div>
         <div className="model-list">
-          {modelList.map((m) => (
+          {FALLBACK_MODELS.map((m) => (
             <button
               key={m}
               className={m === config?.model ? 'model active' : 'model'}
@@ -204,49 +183,6 @@ function SettingsView({
         </div>
         {modelMsg && <div className="msg">{modelMsg}</div>}
       </div>
-
-      <h2 className="section-title">Escaneo de modelos</h2>
-      <button onClick={scan} disabled={scanning} className="scan-btn">
-        {scanning ? 'Escaneando… (~30s)' : '🔍 Escanear modelos disponibles'}
-      </button>
-
-      {report && (
-        <div className="card report">
-          <div className="billing">
-            Billing:{' '}
-            {report.billing.known
-              ? report.billing.billing_enabled
-                ? 'ACTIVADO (Vertex AI factura)'
-                : 'DESACTIVADO (free OK)'
-              : `desconocido (${report.billing.reason || '?'})`}
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Proveedor</th>
-                <th>Modelo</th>
-                <th>Tier</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.results.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.provider}</td>
-                  <td>{r.model}</td>
-                  <td>{r.tier}</td>
-                  <td>{r.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {report.chosen ? (
-            <div className="chosen">✓ Mejor gratuito: {report.chosen.provider}/{report.chosen.model}</div>
-          ) : (
-            <div className="warn">Sin modelo gratuito disponible en este modo.</div>
-          )}
-        </div>
-      )}
 
       {msg && <div className="msg">{msg}</div>}
     </div>
