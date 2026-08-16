@@ -17,12 +17,15 @@ logger = logging.getLogger("daemon.brain")
 
 SYSTEM_PROMPT = """Eres el asistente personal que controla esta Mac.
 Tienes estas herramientas: {tools}
-Devuelve SIEMPRE JSON con una de estas formas:
-{{"tool": "bash", "command": "..."}}
-{{"tool": "applescript", "script": "..."}}
+Devuelve SIEMPRE un JSON valido con una de estas formas EXACTAS:
+{{"tool": "bash", "command": "comando a ejecutar"}}
+{{"tool": "applescript", "script": "script a ejecutar"}}
 {{"tool": "applescript", "script": "...", "jxa": true}}
-{{"answer": "respuesta directa sin ejecutar nada"}}
-No inventes resultados. Si la peticion es ambigua, pide aclaracion con {{"answer": "..."}}."""
+{{"answer": "tu respuesta directa, sin ejecutar nada"}}
+REGLAS:
+- Si el usuario saluda, conversa o pide algo que NO requiere ejecutar un comando, responde directo con {{"answer": "..."}}.
+- Las unicas claves permitidas son: answer, tool, command, script, jxa.
+- No inventes resultados ni herramientas."""
 
 
 class AgentState(BaseModel):
@@ -35,18 +38,32 @@ class AgentState(BaseModel):
 
 
 async def _decide(state: AgentState) -> AgentState:
-    """El LLM decide qué herramienta usar."""
-    prompt = f"{SYSTEM_PROMPT}\n\nPeticion del usuario: {state.command}"
-    try:
-        raw = complete(prompt).choices[0].message.content
-    except RuntimeError as exc:
-        state.answer = str(exc)
-        return state
-    return _parse_decision(raw, state)
+    """El LLM decide qué herramienta usar (con reintento si no da accion valida)."""
+    for attempt in range(3):
+        prompt = (
+            f"{SYSTEM_PROMPT}\n\nPeticion del usuario: {state.command}"
+            if attempt == 0
+            else (
+                f"{SYSTEM_PROMPT}\n\nPeticion del usuario: {state.command}\n"
+                "Tu respuesta anterior no fue una accion valida. "
+                "Devuelve SOLO JSON con las claves exactas: answer, tool, command, script, jxa."
+            )
+        )
+        try:
+            raw = complete(prompt).choices[0].message.content
+        except RuntimeError as exc:
+            state.answer = str(exc)
+            return state
+        result = _parse_decision(raw, state)
+        if result.answer or result.tool:
+            return result
+    return state
 
 
 async def _execute(state: AgentState) -> AgentState:
     """Ejecuta la herramienta elegida."""
+    if state.answer:
+        return state  # respuesta directa, sin herramienta que ejecutar
     try:
         if state.tool == "bash":
             state.output = await run_bash(state.payload or "")
@@ -99,16 +116,23 @@ def _parse_decision(raw: str, state: AgentState) -> AgentState:
         state.answer = "El modelo devolvio JSON invalido."
         return state
 
-    if "answer" in data:
+    if "answer" in data and data.get("answer"):
         state.answer = data["answer"]
         return state
     tool = data.get("tool")
-    if tool not in settings.allowed_tools:
-        state.answer = f"Herramienta {tool!r} no permitida."
+    if tool:
+        if tool not in settings.allowed_tools:
+            state.answer = f"Herramienta {tool!r} no permitida."
+            return state
+        state.tool = tool
+        state.payload = data.get("command") or data.get("script")
+        state.jxa = bool(data.get("jxa"))
         return state
-    state.tool = tool
-    state.payload = data.get("command") or data.get("script")
-    state.jxa = bool(data.get("jxa"))
+    for key in ("response", "message", "respuesta", "text", "output"):
+        if isinstance(data.get(key), str) and data[key].strip():
+            state.answer = data[key]
+            return state
+    state.answer = "El modelo no devolvio una accion valida."
     return state
 
 
