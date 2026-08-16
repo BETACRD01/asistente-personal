@@ -1,4 +1,4 @@
-# Codex Desktop — UI local del asistente de desarrollo
+# AgentRelay — UI local del asistente de desarrollo
 
 Aplicación de escritorio (React + Vite, lista para envolver en Tauri) que se
 conecta al daemon local de la Mac (`127.0.0.1:8765`) para chatear, ejecutar
@@ -30,7 +30,7 @@ npm run preview  # sirve el build (http://localhost:4173)
   de pago.
 - **Escaneo de modelos**: `/api/probe` prueba 1 token por modelo y muestra
   disponibilidad + el mejor modelo gratuito.
-- **Chat streaming** estilo Codex: respuestas del agente con cursor, ejecución
+- **Chat streaming** estilo Claude Code: respuestas del agente con cursor, ejecución
   de herramientas en la Mac (bash/applescript) y estado en vivo.
 
 ## API local del daemon (127.0.0.1:8765)
@@ -42,8 +42,15 @@ npm run preview  # sirve el build (http://localhost:4173)
 | POST | `/api/configure` | Cambiar proveedor (+ key opcional) |
 | WS | `/ws` | Chat streaming (token/stdout/done) |
 
-## Tauri (siguiente paso)
+## App nativa (Tauri)
 
-Cuando esté instalado Rust, envolver esta UI en una ventana nativa:
-`npm create tauri-app` + configurar `src-tauri` para que apunte a este
-frontend y ejecute el daemon al iniciar.
+La UI ya está envuelta en Tauri (Rust). El binario vive en
+`src-tauri/target/release/bundle/`.
+
+```bash
+npm run tauri dev      # ventana nativa en desarrollo
+npm run tauri build    # genera AgentRelay.app y el .dmg
+```
+
+> La ventana se conecta al daemon local (`127.0.0.1:8765`); asegúrate de tener
+> `python main.py` corriendo antes de abrir la app.

@@ -81,7 +81,7 @@ function Setup({
   return (
     <div className="setup">
       <div className="setup-head">
-        <h1>Codex</h1>
+        <h1>AgentRelay</h1>
         <p>Asistente de desarrollo para tu Mac. Conecta un proveedor para empezar.</p>
       </div>
 
@@ -256,7 +256,7 @@ function Chat({
           ⚙ Proveedor
         </button>
         <div className="chat-brand">
-          <b>Codex</b>
+          <b>AgentRelay</b>
           <span className="model-chip">
             {config?.provider}/{config?.model}
           </span>

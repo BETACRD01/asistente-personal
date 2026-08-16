@@ -1,6 +1,7 @@
-# Codex casero: agente de desarrollo con detección de modelos free/paid
+# AgentRelay: agente de desarrollo con detección de modelos free/paid
 
-Documento de investigación y diseño del "Codex casero": un agente que inicia
+Documento de investigación y diseño de "AgentRelay" (asistente de desarrollo
+tipo Codex/Claude Code): un agente que inicia
 sesión con la cuenta de Google, detecta qué modelos de IA tiene realmente
 disponibles (gratuitos vs. de pago), y usa **solo modelos gratuitos** salvo que
 el usuario autorice el pago explícitamente por sesión.
@@ -53,7 +54,7 @@ el usuario autorice el pago explícitamente por sesión.
      (Claude Code, Codex CLI, Gemini CLI) con free tier real.
    - Hay fuentes contradictorias sobre si ese free tier sigue vigente
      (una menciona cierre en jun 2026); verificar con un probe antes de confiar.
-   - Gemini CLI es open source (Apache-2.0): blueprint del Codex casero.
+   - Gemini CLI es open source (Apache-2.0): blueprint del asistente AgentRelay.
 
 3. **Vertex AI (la vía que ya usa el daemon).**
    - Autenticación con cuenta de Google vía ADC (`gcloud auth
@@ -66,7 +67,7 @@ el usuario autorice el pago explícitamente por sesión.
 
 ## Detección programática (no existe campo "free/paid")
 
-No hay un campo `free_tier` en la respuesta de `models.list`. El Codex infiere
+No hay un campo `free_tier` en la respuesta de `models.list`. El asistente infiere
 el tier combinando:
 
 1. **Estado de billing del proyecto** → `cloudbilling.googleapis.com/v1/projects/{project}/billingInfo`
