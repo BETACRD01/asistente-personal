@@ -11,7 +11,19 @@ venv/
 
 # Flutter / Dart (por si se agrega app movil)
 .dart_tool/
-build/
+
+# React Native
+mobile/node_modules/
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/.bundle/
+mobile/vendor/
+mobile/*.log
+mobile/.bundle
+mobile/.metro-health-check*
 
 # macOS
 .DS_Store
