@@ -23,7 +23,7 @@ PROVIDERS = {
     "gemini": {
         "desc": "Google Gemini (gratis con API key de AI Studio / cuenta).",
         "key_env": "GEMINI_API_KEY",
-        "model": "gemini-2.0-flash",
+        "model": "gemini-3.6-flash",
     },
     "openai": {
         "desc": "OpenAI GPT (requiere API key).",

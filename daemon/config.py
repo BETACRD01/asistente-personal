@@ -8,11 +8,11 @@ load_dotenv()
 # Modelos por defecto según proveedor (estilo opencode/codex)
 DEFAULT_MODELS = {
     "ollama": "llama3.2",
-    "gemini": "gemini-2.0-flash",
+    "gemini": "gemini-3.6-flash",
     "openai": "gpt-4o",
     "anthropic": "claude-sonnet-4-20250514",
     "groq": "llama-3.3-70b-versatile",
-    "openrouter": "google/gemini-2.0-flash-001",
+    "openrouter": "google/gemini-2.5-flash",
 }
 
 
