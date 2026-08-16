@@ -1,4 +1,4 @@
-"""Capa LLM unificada con LiteLLM (Ollama, Gemini, Claude, GPT, Groq, OpenRouter)."""
+"""Capa LLM unificada con LiteLLM (Ollama, Gemini, Vertex AI, Claude, GPT, Groq, OpenRouter)."""
 
 import logging
 
@@ -17,6 +17,11 @@ def complete(prompt: str, stream: bool = False):
         kwargs["api_base"] = settings.ollama_host
     elif settings.llm_provider == "gemini":
         kwargs["api_key"] = settings.gemini_api_key
+    elif settings.llm_provider == "vertex_ai":
+        kwargs["vertex_project"] = settings.vertex_project
+        kwargs["vertex_location"] = settings.vertex_location
+        # Vertex AI autentica con la cuenta de Google (ADC) via:
+        #   gcloud auth application-default login
     elif settings.llm_provider == "openai":
         kwargs["api_key"] = settings.openai_api_key
     elif settings.llm_provider == "anthropic":

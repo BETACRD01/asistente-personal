@@ -25,6 +25,11 @@ PROVIDERS = {
         "key_env": "GEMINI_API_KEY",
         "model": "gemini-3.6-flash",
     },
+    "vertex_ai": {
+        "desc": "Google Vertex AI (login con tu cuenta de Google, sin API key).",
+        "key_env": None,
+        "model": "gemini-2.5-flash",
+    },
     "openai": {
         "desc": "OpenAI GPT (requiere API key).",
         "key_env": "OPENAI_API_KEY",
@@ -71,6 +76,24 @@ def apply(provider: str, key: str = "") -> None:
     env = read_env()
     env["LLM_PROVIDER"] = provider
     info = PROVIDERS[provider]
+
+    if provider == "vertex_ai":
+        import subprocess
+
+        print("Iniciando sesion con tu cuenta de Google...")
+        print("Se abrira el navegador. Autoriza el acceso y vuelve aqui.\n")
+        result = subprocess.run(["gcloud", "auth", "application-default", "login"], check=False)
+        if result.returncode != 0:
+            print("\nEl login de Google fallo.")
+            print("Alternativa: ejecuta manualmente  gcloud auth application-default login")
+            sys.exit(1)
+        project = subprocess.run(
+            ["gcloud", "config", "get-value", "project"], capture_output=True, text=True
+        ).stdout.strip()
+        if not project:
+            project = input("Pega tu Project ID de GCP: ").strip()
+        env["VERTEX_PROJECT"] = project
+        print(f"\nProyecto GCP detectado: {project}")
 
     if info["key_env"]:
         if key:
@@ -119,7 +142,7 @@ def main() -> None:
     print("¿Qué proveedor de IA quieres usar?\n")
     for i, (name, info) in enumerate(PROVIDERS.items(), 1):
         print(f"  {i}. {name}: {info['desc']}")
-    choice = input("\nElige (1-6): ").strip()
+    choice = input("\nElige (1-7): ").strip()
     try:
         provider = list(PROVIDERS)[int(choice) - 1]
     except (ValueError, IndexError):
