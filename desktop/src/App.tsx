@@ -286,11 +286,12 @@ function ChatView({
   const send = (textOverride?: string) => {
     const text = (textOverride ?? input).trim();
     if (!text || !connected || busy) return;
-    const id = `u${Date.now()}`;
-    setMessages((prev) => [...prev, { id, role: 'user', content: text }]);
+    const msgId = `u${Date.now()}`;
+    const cmdId = `c${Date.now()}`;
+    setMessages((prev) => [...prev, { id: msgId, role: 'user', content: text }]);
     setInput('');
     setBusy(true);
-    client.sendCommand(id, text);
+    client.sendCommand(cmdId, text);
   };
 
   return (
