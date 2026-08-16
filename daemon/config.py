@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openrouter_api_key: str = ""
 
+    # Modo Codex: free_only (por defecto) | paid (solo con confirmacion por sesion)
+    codex_mode: str = "free_only"
+    codex_allow_paid: bool = False
+
     allowed_tools_raw: str = "bash,applescript"
     bash_timeout_seconds: int = 30
     max_command_length: int = 4000

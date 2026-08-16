@@ -21,7 +21,13 @@ async def handle_command(message: dict):
     logger.info("comando %s: %s", command_id, text)
     yield {"type": "token", "id": command_id, "content": "Procesando..."}
 
-    result = await agent.ainvoke({"command": text})
+    try:
+        result = await agent.ainvoke({"command": text})
+    except Exception as exc:
+        logger.warning("fallo procesando %s: %s", command_id, exc)
+        yield {"type": "token", "id": command_id, "content": f"Error: {exc}"}
+        yield {"type": "done", "id": command_id}
+        return
     answer = result.get("answer") or "(sin respuesta)"
     yield {"type": "token", "id": command_id, "content": answer}
     if result.get("output"):
@@ -31,7 +37,9 @@ async def handle_command(message: dict):
 
 async def main() -> None:
     logger.info("daemon iniciado")
-    await connect(handle_command)
+    from local_api import run_local_server
+
+    await asyncio.gather(connect(handle_command), run_local_server())
 
 
 if __name__ == "__main__":

@@ -1,4 +1,8 @@
-"""Capa LLM unificada con LiteLLM (Ollama, Gemini, Vertex AI, Claude, GPT, Groq, OpenRouter)."""
+"""Capa LLM unificada con LiteLLM (Ollama, Gemini, Vertex AI, Claude, GPT, Groq, OpenRouter).
+
+Garantia FREE: en modo free_only, Vertex AI (cuenta cloud con billing) queda
+bloqueado a nivel de runtime para que la cuenta de Google nunca sea cobrada.
+"""
 
 import logging
 
@@ -8,9 +12,30 @@ from config import settings
 
 logger = logging.getLogger("daemon.llm")
 
+_REFUSAL = (
+    "Modo free_only: Vertex AI factura tu cuenta de cloud y esta bloqueado. "
+    "Usa un proveedor gratuito (gemini, ollama) o confirma el pago por sesion."
+)
+
+
+def _vertex_blocked() -> bool:
+    """True si Vertex AI no debe usarse en el modo activo."""
+    if settings.llm_provider != "vertex_ai":
+        return False
+    if settings.codex_allow_paid:
+        return False
+    from brain import model_probe
+
+    billing = model_probe.billing_is_enabled(settings.vertex_project)
+    return billing is not False  # activo o desconocido => bloqueado
+
 
 def complete(prompt: str, stream: bool = False):
     """Genera una respuesta del LLM configurado (estilo opencode: un proveedor a la vez)."""
+    if _vertex_blocked():
+        logger.warning("vertex_ai bloqueado en modo free_only (billing activo/desconocido)")
+        raise RuntimeError(_REFUSAL)
+
     kwargs: dict = {"model": settings.litellm_model, "messages": [{"role": "user", "content": prompt}]}
 
     if settings.llm_provider == "ollama":

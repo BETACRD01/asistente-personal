@@ -37,7 +37,11 @@ class AgentState(BaseModel):
 async def _decide(state: AgentState) -> AgentState:
     """El LLM decide qué herramienta usar."""
     prompt = f"{SYSTEM_PROMPT}\n\nPeticion del usuario: {state.command}"
-    raw = complete(prompt).choices[0].message.content
+    try:
+        raw = complete(prompt).choices[0].message.content
+    except RuntimeError as exc:
+        state.answer = str(exc)
+        return state
     return _parse_decision(raw, state)
 
 

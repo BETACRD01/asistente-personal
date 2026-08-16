@@ -124,12 +124,46 @@ def show_status() -> None:
         print(f"  {name:<10} {info['desc']}")
 
 
+def codex_auto() -> None:
+    """Escanea modelos con la cuenta actual y fija el mejor modelo gratuito (free_only)."""
+    from brain.selector import select
+    from brain import model_probe
+
+    env = read_env()
+    print("Escaneando modelos disponibles con tu cuenta de Google...\n")
+    billing = model_probe.check_billing(env.get("VERTEX_PROJECT", ""))
+    results = model_probe.scan()
+    model_probe.print_report(billing, results)
+
+    billing_flag = billing.get("billing_enabled") if billing.get("known") else None
+    if billing_flag is not False:
+        print("Garantia FREE: Vertex AI BLOQUEADO (tu cuenta cloud no se cobrara)")
+    chosen = select(results, allow_paid=False, billing=billing_flag)
+    if not chosen:
+        print("\nNo hay ningun modelo gratuito disponible. Nada cambia.")
+        return
+
+    if env.get("LLM_PROVIDER") == chosen["provider"] and env.get("LLM_MODEL") == chosen["model"]:
+        print(f"\nYa esta configurado el mejor modelo gratuito: {chosen['provider']}/{chosen['model']}")
+        return
+    env["LLM_PROVIDER"] = chosen["provider"]
+    env["LLM_MODEL"] = chosen["model"]
+    write_env(env)
+    print(f"\nConfigurado: {chosen['provider']}/{chosen['model']} (mejor gratuito disponible)")
+    print("Reinicia el daemon: python main.py")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Configura el proveedor de IA del daemon")
     parser.add_argument("--list", action="store_true", help="muestra estado y proveedores")
     parser.add_argument("--provider", choices=list(PROVIDERS), help="proveedor a configurar")
     parser.add_argument("--key", default="", help="API key (opcional, se pregunta si falta)")
+    parser.add_argument("--codex-auto", action="store_true", help="escanea modelos y ajusta LLM_MODEL al mejor gratuito")
     args = parser.parse_args()
+
+    if args.codex_auto:
+        codex_auto()
+        return
 
     if args.list:
         show_status()
