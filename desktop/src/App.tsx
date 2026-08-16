@@ -33,12 +33,7 @@ const SUGGESTIONS = [
   '¿Qué hora es?',
 ];
 
-const FALLBACK_MODELS = [
-  'gemini-3.6-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-];
+const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
 
 function SettingsView({
   config,
@@ -230,12 +225,14 @@ function ChatView({
   status,
   connected,
   project,
+  onModelChanged,
 }: {
   config: ConfigInfo | null;
   client: DaemonClient;
   status: string;
   connected: boolean;
   project: string | null;
+  onModelChanged: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -294,11 +291,33 @@ function ChatView({
     client.sendCommand(cmdId, text);
   };
 
+  const currentModel = config?.model?.split('/').pop() ?? '';
+
+  const pickModel = async (model: string) => {
+    if (!model) return;
+    const res = await apiSetModel(model);
+    if (res.ok) onModelChanged();
+  };
+
   return (
     <div className="chat">
       <div className="chat-top">
-        <div className="project-chip">{project ?? 'Local'}</div>
-        <div className="model-chip">{config?.provider}/{config?.model}</div>
+        <div className="project-chip" title={project ?? 'Mac local'}>
+          {(project ?? 'Mac')[0].toUpperCase()}
+        </div>
+        <select
+          className="model-select"
+          value={currentModel}
+          onChange={(e) => pickModel(e.target.value)}
+          disabled={!connected}
+          title="Modelo activo"
+        >
+          {FALLBACK_MODELS.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
         <div className={`dot ${connected ? 'on' : 'off'}`} title={status} />
       </div>
 
@@ -432,6 +451,7 @@ export default function App() {
             status={status}
             connected={connected}
             project={project}
+            onModelChanged={refresh}
           />
         ) : view === 'settings' ? (
           <SettingsView

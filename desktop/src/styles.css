@@ -227,18 +227,29 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.project-chip,
-.model-chip {
+.project-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #04120d;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.model-select {
   background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 3px 10px;
+  padding: 5px 10px;
   font-size: 12px;
   color: var(--muted);
-  max-width: 300px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  max-width: 220px;
+  cursor: pointer;
 }
 
 .messages {
