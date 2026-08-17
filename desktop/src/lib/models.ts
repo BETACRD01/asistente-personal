@@ -16,6 +16,9 @@ export const MODEL_LABELS: Record<string, string> = {
   'gemini-omni-flash-preview': 'Gemini Omni Flash Preview',
 };
 
-export const isPaidModel = (m: string) => m.includes('pro') || m.includes('preview');
+export const isPaidModel = (m: string) => {
+  if (m.includes(':free')) return false;
+  return m.includes('pro') || m.includes('preview');
+};
 
 export const modelLabel = (m: string) => MODEL_LABELS[m] ?? m;

@@ -95,10 +95,18 @@ def _list_anthropic(key: str) -> list[str]:
 
 def _list_openrouter(key: str) -> list[str]:
     data = _fetch(OPENROUTER_BASE, {"Authorization": f"Bearer {key}"})
-    names = [m.get("id", "") for m in data.get("data", [])]
-    models = _filtered(names)
-    models.sort(key=lambda m: (m.split("/")[0] if "/" in m else m, m))
-    return models[:120]
+    names = []
+    for m in data.get("data", []):
+        mid = m.get("id", "")
+        pricing = m.get("pricing") or {}
+        is_free = pricing.get("prompt") == "0" and pricing.get("completion") == "0"
+        if not is_free:
+            continue  # solo modelos gratuitos (sin costo por token)
+        if any(x in mid.lower() for x in _EXCLUDE):
+            continue
+        names.append(mid)
+    names.sort(key=lambda m: (m.split("/")[0] if "/" in m else m, m))
+    return names[:120]
 
 
 def list_key_models(provider: str) -> list[str]:

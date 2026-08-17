@@ -79,11 +79,22 @@ def _candidate_models() -> list[str]:
     return candidates or ["llama3.2"]
 
 
+_PROVIDER_PREFIX = {
+    "openrouter": "openrouter/",
+    "gemini": "gemini/",
+    "groq": "groq/",
+    "anthropic": "anthropic/",
+    "openai": "openai/",
+    "ollama": "ollama/",
+}
+
+
 def _build_kwargs(prompt: str, model: str) -> dict:
-    # Normaliza el prefijo del proveedor (p. ej. "gemini/") para evitar
-    # que LiteLLM enrute modelos Gemini a Vertex AI por error.
-    if settings.llm_provider == "gemini" and not model.startswith("gemini/"):
-        model = f"gemini/{model}"
+    # Normaliza el prefijo del proveedor (p. ej. "gemini/", "openrouter/") para
+    # que LiteLLM enrute el modelo al proveedor correcto.
+    prefix = _PROVIDER_PREFIX.get(settings.llm_provider, "")
+    if prefix and not model.startswith(prefix):
+        model = f"{prefix}{model}"
 
     kwargs: dict = {"model": model, "messages": [{"role": "user", "content": prompt}]}
 
@@ -198,9 +209,15 @@ def complete(prompt: str, stream: bool = False):
                 else:
                     break  # error no temporal (o agotados los intentos) => siguiente modelo
 
-    raise RuntimeError(
-        "No pude generar respuesta: los modelos gratuitos estan saturados o tu cuota se agoto. "
-        "Reintenta en unos segundos, cambia de modelo, o (si es Gemini) revisa tu sesion de Google "
-        "y los creditos en AI Studio.\n"
-        + " | ".join(errors[-4:])
-    )
+    joined = " | ".join(errors[-4:])
+    if any(k in joined for k in ("more credits", "insufficient", "InsufficientBalance", "add funds", "requires more")):
+        note = (
+            "El modelo elegido es de pago y no hay saldo en esa cuenta. "
+            "Elige un modelo ':free' (OpenRouter) o un modelo gratuito."
+        )
+    else:
+        note = (
+            "Reintenta en unos segundos, cambia de modelo, o (si es Gemini) "
+            "revisa tu sesion de Google y los creditos en AI Studio."
+        )
+    raise RuntimeError(f"No pude generar respuesta: {note}\n{joined}")
