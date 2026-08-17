@@ -113,7 +113,11 @@ def _gemini_oauth_call(prompt: str, model: str):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     resp = requests.post(
         url,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "x-goog-user-project": oauth.USER_PROJECT,
+        },
         json={"contents": [{"parts": [{"text": prompt}]}]},
         timeout=90,
     )

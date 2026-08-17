@@ -22,9 +22,10 @@ logger = logging.getLogger("daemon.oauth")
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 REDIRECT_URI = "http://localhost:8765/oauth/callback"
+USER_PROJECT = "agentrelay-oauth-free"
 SCOPES = (
     "openid email "
-    "https://www.googleapis.com/auth/generative-language "
+    "https://www.googleapis.com/auth/cloud-platform "
     "https://www.googleapis.com/auth/generative-language.retriever"
 )
 
