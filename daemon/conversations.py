@@ -5,7 +5,7 @@ import threading
 import time
 from pathlib import Path
 
-PATH = Path(__file__).resolve().parent.parent / "conversations.json"
+PATH = Path(__file__).resolve().parent / "conversations.json"
 
 _lock = threading.Lock()
 
