@@ -74,7 +74,40 @@ def config():
         "project": settings.vertex_project,
         "admin": settings.admin_mode,
         "workspace": settings.workspace,
+        "keys": {
+            "gemini": bool(settings.gemini_api_key),
+            "openai": bool(settings.openai_api_key),
+            "anthropic": bool(settings.anthropic_api_key),
+            "groq": bool(settings.groq_api_key),
+            "openrouter": bool(settings.openrouter_api_key),
+        },
     }
+
+
+@app.post("/api/logout")
+def logout():
+    """Cierra la sesion de Google (revoca el token y borra las credenciales)."""
+    from brain import oauth
+
+    oauth.logout()
+    return {"ok": True}
+
+
+@app.post("/api/key/remove")
+def remove_key(body: dict):
+    """Elimina la API key guardada de un proveedor."""
+    import configure as cfg
+
+    provider = body.get("provider", "")
+    info = cfg.PROVIDERS.get(provider)
+    if not info or not info.get("key_env"):
+        return {"ok": False, "error": f"el proveedor {provider!r} no guarda API key"}
+    env = cfg.read_env()
+    env.pop(info["key_env"], None)
+    cfg.write_env(env)
+    setattr(settings, info["key_env"].lower(), "")
+    logger.info("API key eliminada: %s", info["key_env"])
+    return {"ok": True, "removed": info["key_env"]}
 
 
 @app.post("/api/admin")

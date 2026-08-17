@@ -6,6 +6,7 @@ export interface ConfigInfo {
   project: string;
   admin: boolean;
   workspace: string;
+  keys: Record<string, boolean>;
 }
 
 export interface AccountInfo {

@@ -110,6 +110,20 @@ export async function setAdmin(enabled: boolean): Promise<{ ok: boolean; error?:
   return res.json();
 }
 
+export async function logout(): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/api/logout`, { method: 'POST' });
+  return res.json();
+}
+
+export async function removeApiKey(provider: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/api/key/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider }),
+  });
+  return res.json();
+}
+
 export class DaemonClient {
   private ws: WebSocket | null = null;
   private reconnectTimer: number | null = null;

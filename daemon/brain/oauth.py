@@ -137,6 +137,26 @@ def is_logged_in() -> bool:
     return configured() and bool(settings.gemini_oauth_refresh_token)
 
 
+def logout() -> None:
+    """Cierra la sesion de Google (revoca el token y borra las credenciales)."""
+    import configure as cfg
+
+    token = settings.gemini_oauth_access_token
+    if token:
+        try:
+            requests.post("https://oauth2.googleapis.com/revoke", params={"token": token}, timeout=10)
+        except Exception as exc:
+            logger.warning("no se pudo revocar el token: %s", exc)
+    env = cfg.read_env()
+    for key in ("GEMINI_OAUTH_ACCESS_TOKEN", "GEMINI_OAUTH_REFRESH_TOKEN", "GEMINI_OAUTH_EXPIRES_AT"):
+        env.pop(key, None)
+    cfg.write_env(env)
+    settings.gemini_oauth_access_token = ""
+    settings.gemini_oauth_refresh_token = ""
+    settings.gemini_oauth_expires_at = 0.0
+    logger.info("sesion de Google cerrada")
+
+
 def get_email() -> str:
     token = get_token()
     if not token:

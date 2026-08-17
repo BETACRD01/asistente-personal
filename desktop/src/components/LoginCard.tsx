@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AccountInfo } from '../types';
-import { getAccount as apiGetAccount, login as apiLogin } from '../api';
+import { getAccount as apiGetAccount, login as apiLogin, logout as apiLogout } from '../api';
 
 export default function LoginCard() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -36,14 +36,43 @@ export default function LoginCard() {
     }
   };
 
+  const doLogout = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const res = await apiLogout();
+      if (!res.ok) {
+        setMsg(`⚠ ${res.error}`);
+      } else {
+        setMsg('✓ Sesión cerrada');
+        setAccount(await apiGetAccount());
+      }
+    } catch (e) {
+      setMsg(`⚠ ${String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="card">
       <div className="billing">
         Cuenta de Google: <b>{account?.email || 'No iniciada'}</b>
       </div>
-      <button className="primary" onClick={doLogin} disabled={busy}>
-        {busy ? 'Iniciando sesión…' : account?.logged ? 'Cambiar cuenta / iniciar sesión' : 'Iniciar sesión con Google'}
-      </button>
+      {account?.logged ? (
+        <div className="row-actions">
+          <button className="primary" onClick={doLogin} disabled={busy}>
+            Cambiar cuenta
+          </button>
+          <button className="danger" onClick={doLogout} disabled={busy}>
+            Cerrar sesión
+          </button>
+        </div>
+      ) : (
+        <button className="primary" onClick={doLogin} disabled={busy}>
+          {busy ? 'Iniciando sesión…' : 'Iniciar sesión con Google'}
+        </button>
+      )}
       {msg && <div className="msg">{msg}</div>}
     </div>
   );

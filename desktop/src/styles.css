@@ -194,6 +194,27 @@ body {
   background: var(--border);
 }
 
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button.danger {
+  background: transparent;
+  border: 1px solid #ff6b6b;
+  color: #ff6b6b;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button.danger:hover {
+  background: #ff6b6b;
+  color: #fff;
+}
+
 .sidebar-footer {
   display: flex;
   align-items: center;

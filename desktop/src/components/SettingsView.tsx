@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ConfigInfo } from '../types';
-import { configure as apiConfigure, setAdmin as apiSetAdmin } from '../api';
+import { configure as apiConfigure, removeApiKey as apiRemoveKey, setAdmin as apiSetAdmin } from '../api';
 import LoginCard from './LoginCard';
 import ProviderGrid from './ProviderGrid';
 import ModelPicker from './ModelPicker';
@@ -50,6 +50,16 @@ export default function SettingsView({ config, models, onConnected, onModelChang
     }
   };
 
+  const removeKey = async (id: string) => {
+    try {
+      const res = await apiRemoveKey(id);
+      setMsg(res.ok ? `✓ API key de ${id} eliminada` : `⚠ ${res.error}`);
+      onModelChanged();
+    } catch (e) {
+      setMsg(`⚠ ${String(e)}`);
+    }
+  };
+
   return (
     <div className="settings">
       <div className="settings-head">
@@ -93,9 +103,11 @@ export default function SettingsView({ config, models, onConnected, onModelChang
       <h2 className="section-title">Proveedor y API key</h2>
       <ProviderGrid
         keys={keys}
+        hasKeys={config?.keys ?? {}}
         busyProvider={busyProvider}
         onKeyChange={(id, v) => setKeys({ ...keys, [id]: v })}
         onConnect={connect}
+        onRemoveKey={removeKey}
       />
 
       <h2 className="section-title">Modelo</h2>
