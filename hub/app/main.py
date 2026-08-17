@@ -9,8 +9,10 @@ import json
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from app.auth import create_token, decode_token, login_app_token, login_device_token
@@ -18,6 +20,8 @@ from app.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("hub")
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 # registros en memoria
 # device_token -> WebSocket (PTY de la Mac)
@@ -41,6 +45,11 @@ class LoginRequest(BaseModel):
 @app.get("/health")
 async def health():
     return {"status": "ok", "build": "demo-4"}
+
+
+@app.get("/term", response_class=HTMLResponse)
+async def term_page():
+    return (STATIC_DIR / "term.html").read_text()
 
 
 @app.post("/auth/login")

@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Terminal Mac</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<style>
+  html,body{height:100%;margin:0;padding:0;background:#1e1e1e;overflow:hidden}
+  #term{height:100%;padding:6px;box-sizing:border-box}
+  #msg{position:fixed;top:0;left:0;right:0;text-align:center;padding:6px;font-family:Menlo,monospace;font-size:12px;z-index:9}
+</style>
+</head>
+<body>
+<div id="msg"></div>
+<div id="term"></div>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+<script>
+(function(){
+  var msg = document.getElementById('msg');
+  function status(text, color){
+    msg.textContent = text;
+    msg.style.background = color || 'rgba(0,0,0,0.7)';
+    msg.style.color = '#fff';
+  }
+  var token = '';
+  try { token = localStorage.getItem('devtoken') || ''; } catch(e){}
+  if(!token){
+    token = prompt('Token del dispositivo:');
+    if(token){ try { localStorage.setItem('devtoken', token); } catch(e){} }
+  }
+  if(!token){
+    status('Sin token de dispositivo', '#c62828');
+    return;
+  }
+  var term = new Terminal({
+    cursorBlink: true,
+    fontSize: 14,
+    fontFamily: 'Menlo, Monaco, monospace',
+    scrollback: 8000,
+    theme: { background: '#1e1e1e', foreground: '#d4d4d4' }
+  });
+  var fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(document.getElementById('term'));
+  fit.fit();
+  var ws = null;
+  function connect(){
+    var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    var url = proto + '://' + location.host + '/ws/term?token=' + encodeURIComponent(token) + '&device=' + encodeURIComponent(token);
+    status('Conectando…', '#e65100');
+    try { ws = new WebSocket(url); }
+    catch(e){ status('Error de conexión', '#c62828'); return; }
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = function(){ status('Conectado', '#2e7d32'); sendResize(); };
+    ws.onmessage = function(ev){
+      if(ev.data instanceof ArrayBuffer){ term.write(new Uint8Array(ev.data)); return; }
+      try {
+        var j = JSON.parse(String(ev.data));
+        if(j.type === 'status'){
+          if(j.state === 'connected'){ status('Mac en línea', '#2e7d32'); term.writeln('\r\n\x1b[32mMac en línea\x1b[0m'); }
+          else { status('Mac sin conexión', '#c62828'); term.writeln('\r\n\x1b[31mMac sin conexión\x1b[0m'); }
+        }
+      }catch(e){}
+    };
+    ws.onclose = function(){ status('Cerrado, reconectando…', '#e65100'); setTimeout(connect, 3000); };
+    ws.onerror = function(){ status('Error de conexión', '#c62828'); };
+  }
+  function sendResize(){
+    if(ws && ws.readyState === 1){
+      var d = term.proposeDimensions();
+      ws.send(JSON.stringify({ type: 'resize', cols: d ? d.cols : 80, rows: d ? d.rows : 24 }));
+    }
+  }
+  term.onData(function(d){ if(ws && ws.readyState === 1){ ws.send(new TextEncoder().encode(d)); } });
+  if(window.ResizeObserver){ new ResizeObserver(function(){ fit.fit(); sendResize(); }).observe(document.body); }
+  window.addEventListener('resize', function(){ fit.fit(); sendResize(); });
+  connect();
+})();
+</script>
+</body>
+</html>
