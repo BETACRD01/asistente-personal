@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,7 +17,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { ChatMessage, HubClient } from './src/api/hubClient';
 import MessageBubble from './src/components/MessageBubble';
 import SuggestionChips from './src/components/SuggestionChips';
-import { DEVICE_TOKEN } from './src/config';
+import { DEVICE_NAME, DEVICE_TOKEN } from './src/config';
 
 const SUGGESTIONS = [
   'Abre Safari',
@@ -34,7 +35,9 @@ function ChatScreen() {
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('Conectando a tu Mac...');
   const [connected, setConnected] = useState(false);
+  const [macOnline, setMacOnline] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showConn, setShowConn] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -51,7 +54,12 @@ function ChatScreen() {
         setStatus(error.message);
       });
 
+    const poll = setInterval(() => {
+      client.deviceOnline().then(setMacOnline);
+    }, 8000);
+
     return () => {
+      clearInterval(poll);
       client.disconnect();
       clientRef.current = null;
     };
@@ -163,11 +171,16 @@ function ChatScreen() {
           </View>
           <View>
             <Text style={[styles.title, dark ? styles.textDark : null]}>Asistente IA</Text>
-            <View style={[styles.statusPill, connected ? styles.pillOn : styles.pillOff]}>
+            <Pressable
+              style={[
+                styles.statusPill,
+                !connected ? styles.pillWarn : macOnline ? styles.pillOn : styles.pillErr,
+              ]}
+              onPress={() => setShowConn(true)}>
               <Text style={styles.statusPillText}>
-                {connected ? 'Conectado a tu Mac' : status}
+                {!connected ? status : macOnline ? 'Conectado a tu Mac' : 'Mac desconectada'}
               </Text>
-            </View>
+            </Pressable>
           </View>
         </View>
         <View style={styles.headerActions}>
@@ -234,6 +247,43 @@ function ChatScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={showConn} transparent animationType="fade" onRequestClose={() => setShowConn(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, dark ? styles.modalCardDark : null]}>
+            <Text style={[styles.modalTitle, dark ? styles.textDark : null]}>Conexión</Text>
+
+            <View style={styles.connRow}>
+              <Text style={styles.connLabel}>Servidor (hub)</Text>
+              <View style={[styles.connBadge, connected ? styles.pillOn : styles.pillWarn]}>
+                <Text style={styles.statusPillText}>{connected ? 'Conectado' : 'Sin conexión'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.connRow}>
+              <Text style={styles.connLabel}>Tu Mac ({DEVICE_NAME})</Text>
+              <View style={[styles.connBadge, macOnline ? styles.pillOn : styles.pillErr]}>
+                <Text style={styles.statusPillText}>{macOnline ? 'En línea' : 'Sin conexión'}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.connHint}>
+              {macOnline
+                ? 'Tu Mac está en línea y ejecutará lo que escribas en el chat.'
+                : 'Enciende el daemon en tu Mac (comando "agent" en su terminal) para poder darle instrucciones.'}
+            </Text>
+
+            {!connected && (
+              <Pressable style={styles.modalBtn} onPress={reconnect}>
+                <Text style={styles.modalBtnText}>⟳ Reconectar</Text>
+              </Pressable>
+            )}
+            <Pressable style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setShowConn(false)}>
+              <Text style={styles.modalBtnTextGhost}>Cerrar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -280,8 +330,51 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   pillOn: { backgroundColor: '#34c759' },
-  pillOff: { backgroundColor: '#ff9500' },
+  pillWarn: { backgroundColor: '#ff9500' },
+  pillErr: { backgroundColor: '#ff3b30' },
   statusPillText: { fontSize: 11, color: '#ffffff', fontWeight: '600' },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 28,
+  },
+  modalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 20,
+  },
+  modalCardDark: { backgroundColor: '#1c1c1e' },
+  modalTitle: { fontSize: 19, fontWeight: '700', color: '#1d1d1f', marginBottom: 16 },
+  connRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  connLabel: { fontSize: 14, color: '#3a3a3c' },
+  connBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  connHint: {
+    fontSize: 13,
+    color: '#6e6e73',
+    lineHeight: 18,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  modalBtn: {
+    backgroundColor: '#10a37f',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  modalBtnText: { color: '#ffffff', fontWeight: '600', fontSize: 15 },
+  modalBtnGhost: { backgroundColor: 'transparent', borderWidth: StyleSheet.hairlineWidth, borderColor: '#c7c7cc' },
+  modalBtnTextGhost: { color: '#1d1d1f', fontWeight: '600', fontSize: 15 },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   reconnect: {
     backgroundColor: '#ffffff',

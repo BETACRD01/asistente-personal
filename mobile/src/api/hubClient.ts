@@ -1,4 +1,4 @@
-import { APP_TOKEN, HUB_URL, WS_APP_URL } from '../config';
+import { APP_TOKEN, DEVICE_TOKEN, HUB_URL, WS_APP_URL } from '../config';
 
 export interface HubMessage {
   type: string;
@@ -34,6 +34,25 @@ export class HubClient {
     }
     const data = await response.json();
     this.token = data.token;
+  }
+
+  async deviceOnline(): Promise<boolean> {
+    if (!this.token) {
+      return false;
+    }
+    try {
+      const response = await fetch(`${HUB_URL}/devices`, {
+        headers: { Authorization: `Bearer ${this.token}` },
+      });
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        return false;
+      }
+      const device = data.find(d => d.device === DEVICE_TOKEN);
+      return Boolean(device && device.connected);
+    } catch {
+      return false;
+    }
   }
 
   setMessageHandler(handler: (message: HubMessage) => void): void {
