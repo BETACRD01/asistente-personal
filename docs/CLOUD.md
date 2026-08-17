@@ -14,12 +14,11 @@
 ## Recursos a crear
 
 - **VPS / VM** en GCP (o el proveedor que se elija) con Ubuntu.
-- **Dominio** para la API: `api.tudominio.com` (pendiente de elegir).
-- **Redis** (instancia gestionada o contenedor en el VPS).
-- **Certificado TLS** con Let's Encrypt / Certbot.
+- **Dominio** para la API: `agentrelay.duckdns.org` (certificado TLS vía DuckDNS / Let's Encrypt).
 
 ## Notas
 
 - No subir claves ni `.env` al repositorio.
 - Guardar los secrets en el gestor de secrets de GitHub o del proveedor.
-- La app móvil apuntará a `https://api.tudominio.com` y `wss://api.tudominio.com/ws/app`.
+- El hub solo enruta el **terminal remoto** (WebSocket); el cliente conecta por
+  `wss://agentrelay.duckdns.org/ws/term?token=<DEVICE_TOKEN>&device=<DEVICE_TOKEN>`.

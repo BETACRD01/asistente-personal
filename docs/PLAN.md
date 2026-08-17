@@ -2,61 +2,51 @@
 
 ## Visión general
 
-Un asistente de voz/texto en el móvil que controla la Mac remota ejecutando
-comandos reales (terminal, Finder, UI) usando un LLM para interpretar la
-intención del usuario.
+Controlar la Mac desde el celular ejecutando comandos en su terminal real, y usar
+los agentes de IA (`agent`, codex, etc.) configurados en su shell. El cliente es
+**Termux** (Android); el acceso funciona desde cualquier red mediante el hub en la
+nube.
 
 ## Componentes en detalle
 
-### 1. App Móvil (React Native)
+### 1. Cliente (Termux en el celular)
 
-- Pantalla de chat (texto / voz opcional).
-- Conexión WebSocket segura con JWT.
-- Recibe streaming de tokens y stdout de la Mac.
-- Solicita confirmación para acciones destructivas.
+- `websocat` conecta al hub por WebSocket y da acceso al terminal real de la Mac.
+- No hay app propia: se configura Termux (Play Store) con la URL del relé.
 
 ### 2. Hub (VPS)
 
-- **FastAPI** expone REST (`/auth`, `/history`) y WebSocket (`/ws/app`, `/ws/mac`).
-- **Redis** como capa de estado y **Pub/Sub** para enrutar mensajes:
-  - `ws/app` → publica en canal del dispositivo.
-  - daemon Mac suscrito al canal privado.
+- **FastAPI** expone REST (`/auth/login`, `/auth/device`, `/health`) y WebSocket.
+- Relé de terminal en memoria (sin Redis): `ws/mac/term` (daemon) ↔ `ws/term` (cliente).
+- Cliente autentica con JWT de app o con el `DEVICE_TOKEN` directamente.
 - **Nginx + Certbot** para TLS y proxy reverso.
-- Persistencia de historial.
 
 ### 3. Daemon (Mac)
 
-- Proceso `python` en segundo plano (launchd).
-- Escucha `wss://api.tudominio.com/ws/mac`.
-- **LangGraph** orquesta el agente (grafo de pasos y herramientas).
-- **LiteLLM** unifica el LLM:
-  - **Ollama local** (gratis, sin conexión).
-  - **Claude / GPT-4o** (cloud, mejor razonamiento).
-- Herramientas:
-  - `Bash` → comandos de terminal.
-  - `AppleScript / JXA` → controlar Finder, Safari, apps, UI.
-- Envía stdout y stream de tokens de vuelta al VPS.
+- `daemon/local_api.py` + `daemon/cli.py`: asistente `agent` en la shell.
+- `daemon/term_server.py`: expone el PTY real (`zsh`) en `:8766` (Wi-Fi) y se
+  conecta al hub (`/ws/mac/term`) para acceso desde cualquier red.
+- **OpenRouter** como proveedor de LLM (modelos `:free`), con respaldo OAuth (Gemini).
 
 ## Seguridad
 
-- JWT para autenticar la app.
-- **Token de dispositivo** por canal WebSocket (cada Mac tiene su token).
-- Confirmación del usuario para comandos peligrosos.
-- El daemon no expone puertos; solo conexión saliente al Hub.
+- JWT para autenticar al cliente (o `DEVICE_TOKEN` directo en el relé).
+- `DEVICE_TOKEN` por dispositivo (cada Mac tiene el suyo).
+- Confirmación del usuario para comandos peligrosos en el CLI.
 
 ## Fases
 
-1. **Fase 1** — Hub mínimo: WS + Redis Pub/Sub + echo.
-2. **Fase 2** — Daemon: conexión WS, ejecutar Bash, responder.
-3. **Fase 3** — LangGraph + LiteLLM + Ollama.
-4. **Fase 4** — App móvil con chat y streaming (React Native).
-5. **Fase 5** — AppleScript/JXA, voz, notificaciones, despliegue con HTTPS.
+1. **Hecho** — Hub mínimo: WS + relé de terminal (FastAPI, en memoria).
+2. **Hecho** — Daemon: terminal PTY real + puente al hub.
+3. **Hecho** — CLI `agent` con LLM (OpenRouter `:free`).
+4. **En curso** — Despliegue del hub actualizado en el VPS; configuración de Termux.
+5. **Opcional** — AppleScript/JXA, voz, notificaciones.
 
 ## Stack resumido
 
 | Capa | Tecnología |
 |------|------------|
-| Mobile | React Native |
-| Hub | FastAPI + Redis + Nginx + Certbot |
-| Daemon | Python + LangGraph + LiteLLM + Ollama |
-| Modelos | Ollama (local) / Claude / GPT-4o |
+| Cliente | Termux + websocat |
+| Hub | FastAPI + Nginx + Certbot |
+| Daemon | Python + PTY (zsh) |
+| Modelos | OpenRouter (`:free`) / Gemini (respaldo) |

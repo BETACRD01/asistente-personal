@@ -1,46 +1,38 @@
 # API y WebSocket
 
-Base URL (pendiente): `https://api.tudominio.com`
+Base URL: `https://agentrelay.duckdns.org`
 
 ## REST (FastAPI Hub)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| `POST` | `/auth/login` | Devuelve JWT |
-| `GET` | `/history` | Historial de conversación |
-| `GET` | `/devices` | Dispositivos (Macs) registrados |
-| `POST` | `/commands` | Enviar un comando a un dispositivo (fallback REST) |
+| `GET` | `/health` | Estado del hub |
+| `POST` | `/auth/login` | Devuelve JWT de app (cuerpo: `{"token": "<APP_TOKEN>"}`) |
+| `POST` | `/auth/device` | Devuelve JWT de dispositivo (cuerpo: `{"token": "<DEVICE_TOKEN>"}`) |
 
-## WebSocket
+## WebSocket (terminal remoto)
+
+El hub es un relé de bytes entre el terminal de la Mac y el cliente (Termux/app).
 
 | Endpoint | Uso |
 |----------|-----|
-| `wss://api.tudominio.com/ws/app` | La app móvil envía mensajes y recibe streaming |
-| `wss://api.tudominio.com/ws/mac` | El daemon de la Mac recibe comandos y responde |
+| `wss://agentrelay.duckdns.org/ws/term` | El cliente escribe/lee el terminal (`?token=<jwt o device token>&device=<DEVICE_TOKEN>`) |
+| `wss://agentrelay.duckdns.org/ws/mac/term` | El daemon de la Mac publica/recibe los bytes del PTY (Bearer con `DEVICE_TOKEN`) |
 
 ### Handshake
 
-- Conexión autenticada con JWT en `Authorization` o query param.
-- El daemon se identifica con su **token de dispositivo**.
+- Cliente: JWT de app (de `/auth/login`) **o** el `DEVICE_TOKEN` directamente, más el parámetro `device`.
+- Daemon: se identifica con su **token de dispositivo** (Bearer).
 
-### Mensajes (JSON)
+### Mensajes
 
-```jsonc
-// App → Hub (comando)
-{ "type": "command", "text": "abre safari", "device": "mac-01" }
+- **Binarios**: datos del terminal (salida de la shell / input del usuario).
+- **Texto** (JSON de control):
+  - `{"type":"status","state":"connected|offline"}` del hub al cliente.
+  - `{"type":"resize","cols":C,"rows":R}` del cliente al daemon para redimensionar el PTY.
 
-// Hub → Daemon (reenvío)
-{ "type": "command", "id": "msg_123", "text": "abre safari" }
+### Ejemplo desde Termux
 
-// Daemon → Hub (stream)
-{ "type": "token", "id": "msg_123", "content": "Voy a" }
-{ "type": "stdout", "id": "msg_123", "content": "Safari abierto" }
-{ "type": "done", "id": "msg_123" }
-{ "type": "error", "id": "msg_123", "message": "..." }
+```sh
+websocat -b "wss://agentrelay.duckdns.org/ws/term?token=<DEVICE_TOKEN>&device=<DEVICE_TOKEN>"
 ```
-
-## Enrutamiento (Redis Pub/Sub)
-
-- Canal por dispositivo: `device:{token}`.
-- El Hub publica los mensajes de la app en el canal del dispositivo.
-- El daemon está suscrito a su canal y responde al Hub vía Pub/Sub de vuelta.
