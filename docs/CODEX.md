@@ -1,5 +1,11 @@
 # AgentRelay: agente de desarrollo con detección de modelos free/paid
 
+> **Archivado (2026-08-17).** El agente IA embebido (`daemon/brain/`, `cli.py`,
+> `local_api.py`, `main.py`, chat/Redis en el hub, app móvil) fue **eliminado**.
+> El sistema actual es **terminal remoto + SSH desde Termux** (ver `PLAN.md` y
+> `API.md`). Este documento queda como referencia histórica del diseño del agente
+> y ya no refleja el código del repositorio.
+
 Documento de investigación y diseño de "AgentRelay" (asistente de desarrollo
 tipo Codex/Claude Code): un agente que inicia
 sesión con la cuenta de Google, detecta qué modelos de IA tiene realmente

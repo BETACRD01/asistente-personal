@@ -18,7 +18,11 @@
 
 ## Notas
 
-- No subir claves ni `.env` al repositorio.
+- No subir claves ni `.env` al repositorio (es **público**).
 - Guardar los secrets en el gestor de secrets de GitHub o del proveedor.
-- El hub solo enruta el **terminal remoto** (WebSocket); el cliente conecta por
-  `wss://agentrelay.duckdns.org/ws/term?token=<DEVICE_TOKEN>&device=<DEVICE_TOKEN>`.
+- El hub enruta el **terminal remoto** y el **túnel TCP** (SSH/SCP/SFTP):
+  - Terminal: `wss://agentrelay.duckdns.org/ws/term?token=<DEVICE_TOKEN>&device=<DEVICE_TOKEN>`
+  - SSH/túnel: `wss://agentrelay.duckdns.org/ws/tcp?token=<DEVICE_TOKEN>&device=<DEVICE_TOKEN>`
+- El despliegue del hub a la VM es automático (GitHub Actions, push a `main` con
+  cambios en `hub/`); el `.env` de la VM se regenera desde los secrets del
+  workflow en cada deploy.
