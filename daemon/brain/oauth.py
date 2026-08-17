@@ -29,6 +29,20 @@ SCOPES = (
     "https://www.googleapis.com/auth/generative-language.retriever"
 )
 
+# Lista curada: pro, flash y nuevos clave (sin previews ruidosos ni duplicados)
+PREFERRED_MODELS = [
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3.1-pro-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3-flash-preview",
+]
+
 CLIENT_ID = settings.gemini_oauth_client_id
 CLIENT_SECRET = settings.gemini_oauth_client_secret
 
@@ -154,5 +168,10 @@ def list_models() -> list[str]:
     if r.status_code != 200:
         raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
     names = [m.get("name", "").removeprefix("models/") for m in r.json().get("models", [])]
-    skip = ("embedding", "tts", "robotics", "computer-use", "native-audio", "live-translate", "imagen")
-    return [n for n in names if n.startswith("gemini-") and not any(k in n for k in skip)]
+    available = set(names)
+    return [m for m in PREFERRED_MODELS if m in available]
+
+
+def is_paid_model(name: str) -> bool:
+    """Modelos premium (pro/preview) frente a los de free tier."""
+    return "pro" in name or "preview" in name

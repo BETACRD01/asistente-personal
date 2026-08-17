@@ -37,6 +37,8 @@ const SUGGESTIONS = [
 
 const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
 
+const isPaidModel = (m: string) => m.includes('pro') || m.includes('preview');
+
 function SettingsView({
   config,
   models,
@@ -190,7 +192,7 @@ function SettingsView({
               className={m === config?.model ? 'model active' : 'model'}
               onClick={() => pickModel(m)}
             >
-              {m}
+              {(isPaidModel(m) ? '⚠ ' : '') + m}
             </button>
           ))}
         </div>
@@ -298,11 +300,11 @@ function ChatView({
           title="Modelo activo"
         >
           {!models.includes(currentModel) && currentModel && (
-            <option value={currentModel}>{currentModel}</option>
+            <option value={currentModel}>{(isPaidModel(currentModel) ? '⚠ ' : '') + currentModel}</option>
           )}
           {models.map((m) => (
             <option key={m} value={m}>
-              {m}
+              {(isPaidModel(m) ? '⚠ ' : '') + m}
             </option>
           ))}
         </select>
