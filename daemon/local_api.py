@@ -13,6 +13,7 @@ import logging
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from config import settings
 
@@ -103,35 +104,52 @@ def configure(body: dict):
 
 @app.get("/api/account")
 def account():
-    """Cuenta de Google activa en esta Mac (para login personal)."""
-    email = ""
-    try:
-        r = subprocess.run(
-            ["gcloud", "config", "get-value", "account"],
-            capture_output=True, text=True, timeout=10,
-        )
-        email = (r.stdout or "").strip()
-        if email in ("", "(unset)", "None"):
-            email = ""
-    except Exception as exc:
-        logger.warning("no se pudo leer cuenta gcloud: %s", exc)
-    return {"ok": True, "email": email, "logged": bool(email)}
+    """Estado de la sesion de Google (OAuth de la cuenta personal)."""
+    from brain import oauth
+
+    if oauth.is_logged_in():
+        return {"ok": True, "email": oauth.get_email() or "", "logged": True}
+    return {"ok": True, "email": "", "logged": False}
+
+
+@app.get("/api/oauth/status")
+def oauth_status():
+    from brain import oauth
+
+    return {"ok": True, "logged": oauth.is_logged_in(), "email": oauth.get_email() if oauth.is_logged_in() else ""}
 
 
 @app.post("/api/login")
 def login():
-    """Inicia sesion con la cuenta de Google (abre el navegador, OAuth de gcloud)."""
-    import subprocess
+    """Inicia sesion con la cuenta de Google: abre el navegador y espera el callback."""
+    from brain import oauth
 
+    if not oauth.configured():
+        return {"ok": False, "error": "Falta configurar el Client ID/Secret de OAuth"}
     try:
-        r = subprocess.run(
-            ["gcloud", "auth", "application-default", "login", "--force"],
-            capture_output=True, text=True, timeout=180,
-        )
-        ok = r.returncode == 0
-        return {"ok": ok, "error": None if ok else (r.stderr or r.stdout or "error al iniciar sesion")[:300]}
+        opened = oauth.start_login()
+        return {"ok": True, "url": oauth.auth_url(), "opened": opened}
     except Exception as exc:
         return {"ok": False, "error": str(exc)[:300]}
+
+
+@app.get("/oauth/callback")
+def oauth_callback(code: str = ""):
+    """Recibe el codigo de Google, guarda la sesion y muestra confirmacion."""
+    from brain import oauth
+
+    try:
+        oauth.exchange_code(code)
+        return HTMLResponse(
+            "<html><body style='font-family:sans-serif;text-align:center;padding:40px'>"
+            "<h2>✓ Sesión iniciada con Google</h2>"
+            "<p>Puedes cerrar esta pestaña y volver a AgentRelay.</p></body></html>"
+        )
+    except Exception as exc:
+        return HTMLResponse(
+            "<html><body style='font-family:sans-serif;text-align:center;padding:40px'>"
+            f"<h2>⚠ Error</h2><p>{exc}</p></body></html>"
+        )
 
 
 @app.post("/api/model")

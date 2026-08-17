@@ -10,6 +10,7 @@ import time
 
 import litellm
 
+from brain import oauth
 from config import DEFAULT_MODELS, settings
 
 logger = logging.getLogger("daemon.llm")
@@ -102,18 +103,61 @@ def _build_kwargs(prompt: str, model: str) -> dict:
     return kwargs
 
 
+def _gemini_oauth_call(prompt: str, model: str):
+    """Llama a la API de Gemini con el token de la cuenta Google (free tier personal)."""
+    import requests
+
+    token = oauth.get_token()
+    if not token:
+        raise RuntimeError("No hay sesion iniciada con Google")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    resp = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json={"contents": [{"parts": [{"text": prompt}]}]},
+        timeout=90,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Gemini OAuth {resp.status_code}: {resp.text[:300]}")
+    data = resp.json()
+    try:
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        raise RuntimeError(f"Respuesta inesperada: {str(data)[:300]}")
+    return _FakeResponse(text)
+
+
+class _FakeMessage:
+    def __init__(self, content: str):
+        self.content = content
+
+
+class _FakeChoice:
+    def __init__(self, content: str):
+        self.message = _FakeMessage(content)
+
+
+class _FakeResponse:
+    def __init__(self, content: str):
+        self.choices = [_FakeChoice(content)]
+
+
 def complete(prompt: str, stream: bool = False):
     """Genera una respuesta del LLM con reintentos y fallback a otro modelo gratuito."""
     if _vertex_blocked():
         logger.warning("vertex_ai bloqueado en modo free_only (billing activo/desconocido)")
         raise RuntimeError(_REFUSAL)
 
+    use_oauth = settings.llm_provider == "gemini" and oauth.is_logged_in()
+
     errors: list[str] = []
     for model in _candidate_models():
-        kwargs = _build_kwargs(prompt, model)
+        kwargs = _build_kwargs(prompt, model) if not use_oauth else None
         for attempt in range(1, _MAX_ATTEMPTS + 1):
-            logger.info("llm call provider=%s model=%s intento=%d", settings.llm_provider, model, attempt)
+            logger.info("llm call provider=%s model=%s intento=%d oauth=%s", settings.llm_provider, model, attempt, use_oauth)
             try:
+                if use_oauth:
+                    return _gemini_oauth_call(prompt, model)
                 return litellm.completion(**kwargs, stream=stream)
             except Exception as exc:
                 msg = str(exc)

@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openrouter_api_key: str = ""
 
+    # OAuth de cuenta Google (login personal, free tier Gemini sin API key)
+    gemini_oauth_client_id: str = ""
+    gemini_oauth_client_secret: str = ""
+    gemini_oauth_refresh_token: str = ""
+    gemini_oauth_access_token: str = ""
+    gemini_oauth_expires_at: float = 0.0
+
     # Modo Codex: free_only (por defecto) | paid (solo con confirmacion por sesion)
     codex_mode: str = "free_only"
     codex_allow_paid: bool = False

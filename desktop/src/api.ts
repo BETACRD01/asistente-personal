@@ -32,6 +32,8 @@ export interface AccountInfo {
   ok: boolean;
   email?: string;
   logged: boolean;
+  url?: string;
+  opened?: boolean;
   error?: string;
 }
 

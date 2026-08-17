@@ -63,9 +63,19 @@ function SettingsView({
     setMsg('');
     try {
       const res = await apiLogin();
-      const acct = await apiGetAccount();
+      if (!res.ok) {
+        setMsg(`⚠ ${res.error}`);
+        setLoginBusy(false);
+        return;
+      }
+      setMsg('✓ Autoriza en la ventana del navegador… esperando…');
+      let acct = await apiGetAccount();
+      for (let i = 0; i < 60 && !acct.logged; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        acct = await apiGetAccount();
+      }
       setAccount(acct);
-      setMsg(res.ok ? `✓ Sesión iniciada: ${acct.email ?? ''}` : `⚠ ${res.error}`);
+      setMsg(acct.logged ? `✓ Sesión iniciada: ${acct.email}` : '⚠ No se completó la sesión. Intenta de nuevo.');
     } catch (e) {
       setMsg(`⚠ ${String(e)}`);
     } finally {
