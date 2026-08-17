@@ -7,7 +7,6 @@ class Settings(BaseSettings):
     jwt_expire_hours: int = 24
     device_tokens_raw: str = Field(default="", validation_alias="DEVICE_TOKENS")
     app_token: str = ""
-    redis_url: str = "redis://127.0.0.1:6379/0"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

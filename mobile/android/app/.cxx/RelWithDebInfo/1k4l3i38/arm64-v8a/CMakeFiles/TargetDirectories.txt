@@ -1,9 +1,0 @@
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/CMakeFiles/appmodules.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/CMakeFiles/edit_cache.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/CMakeFiles/rebuild_cache.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/safeareacontext_autolinked_build/CMakeFiles/edit_cache.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/safeareacontext_autolinked_build/CMakeFiles/rebuild_cache.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/RNCWebViewSpec_autolinked_build/CMakeFiles/react_codegen_RNCWebViewSpec.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/RNCWebViewSpec_autolinked_build/CMakeFiles/edit_cache.dir
-/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/arm64-v8a/RNCWebViewSpec_autolinked_build/CMakeFiles/rebuild_cache.dir
