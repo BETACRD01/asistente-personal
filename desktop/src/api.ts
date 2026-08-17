@@ -1,10 +1,12 @@
-export interface ConfigInfo {
-  provider: string;
-  model: string;
-  mode: string;
-  vertex_blocked: boolean;
-  project: string;
-}
+import type { AccountInfo, ChatMessage, ConfigInfo, ConfigureResponse, WsMessage } from './types';
+
+export type {
+  AccountInfo,
+  ChatMessage,
+  ConfigInfo,
+  ConfigureResponse,
+  WsMessage,
+};
 
 export interface ProbeResult {
   provider: string;
@@ -19,22 +21,6 @@ export interface ProbeReport {
   mode: string;
   results: ProbeResult[];
   chosen: ProbeResult | null;
-}
-
-export interface ConfigureResponse {
-  ok: boolean;
-  provider?: string;
-  model?: string;
-  error?: string;
-}
-
-export interface AccountInfo {
-  ok: boolean;
-  email?: string;
-  logged: boolean;
-  url?: string;
-  opened?: boolean;
-  error?: string;
 }
 
 const BASE = 'http://127.0.0.1:8765';
@@ -114,20 +100,6 @@ export async function login(): Promise<AccountInfo> {
   const res = await fetch(`${BASE}/api/login`, { method: 'POST' });
   return res.json();
 }
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  streaming?: boolean;
-}
-
-type WsMessage = {
-  type: string;
-  id?: string;
-  content?: string;
-  message?: string;
-};
 
 export class DaemonClient {
   private ws: WebSocket | null = null;
