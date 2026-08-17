@@ -2,6 +2,8 @@ export const HUB_URL = 'https://agentrelay.duckdns.org';
 
 export const WS_APP_URL = 'wss://agentrelay.duckdns.org/ws/app';
 
+export const HUB_WS_TERM = 'wss://agentrelay.duckdns.org/ws/term';
+
 export const DEVICE_NAME = 'mac-01';
 
 export const DEVICE_TOKEN = 'Rfihtd_-FEP_6GBrTdtDY5CUNFQ2mz4t1Vgfi4epbNA';

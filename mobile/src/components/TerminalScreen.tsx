@@ -3,8 +3,18 @@ import { Pressable, StyleSheet, Text, TextInput, View, useColorScheme } from 're
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TERM_HOST, TERM_PORT, TERM_TOKEN } from '../config';
+import {
+  APP_TOKEN,
+  DEVICE_TOKEN,
+  HUB_URL,
+  HUB_WS_TERM,
+  TERM_HOST,
+  TERM_PORT,
+  TERM_TOKEN,
+} from '../config';
 import { TERMINAL_HTML } from '../term/terminalHtml';
+
+type Mode = 'cloud' | 'local';
 
 interface TerminalScreenProps {
   onClose?: () => void;
@@ -16,19 +26,40 @@ export default function TerminalScreen({ onClose }: TerminalScreenProps) {
   const [host, setHost] = useState(TERM_HOST);
   const [port, setPort] = useState(TERM_PORT);
   const [token, setToken] = useState(TERM_TOKEN);
+  const [mode, setMode] = useState<Mode>('cloud');
+  const [wsUrl, setWsUrl] = useState('');
   const [key, setKey] = useState(1);
   const [conn, setConn] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>(
     'connecting',
   );
 
-  const html = TERMINAL_HTML.replace('__HOST__', host.trim())
-    .replace('__PORT__', port.trim() || '8766')
-    .replace('__TOKEN__', token.trim());
-
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     setConn('connecting');
+    let url: string;
+    if (mode === 'local') {
+      url = `ws://${host.trim()}:${port.trim() || '8766'}/term?token=${encodeURIComponent(
+        token.trim(),
+      )}`;
+    } else {
+      try {
+        const response = await fetch(`${HUB_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: APP_TOKEN }),
+        });
+        const data = await response.json();
+        url = `${HUB_WS_TERM}?token=${data.token}&device=${DEVICE_TOKEN}`;
+      } catch {
+        setConn('error');
+        return;
+      }
+    }
+    setWsUrl(url);
     setKey(k => k + 1);
-  }, []);
+  }, [host, port, token, mode]);
+
+  const html = TERMINAL_HTML.replace('__MODE__', mode);
+  const injected = `window.__WS__ = ${JSON.stringify(wsUrl)};`;
 
   const connColor =
     conn === 'connected' ? styles.pillOn : conn === 'connecting' ? styles.pillWarn : styles.pillErr;
@@ -50,23 +81,16 @@ export default function TerminalScreen({ onClose }: TerminalScreenProps) {
         <View style={[styles.statusPill, connColor]}>
           <Text style={styles.statusText}>{connLabel}</Text>
         </View>
-        <TextInput
-          style={styles.input}
-          value={host}
-          onChangeText={setHost}
-          placeholder="IP de la Mac"
-          placeholderTextColor="#8e8e93"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <TextInput
-          style={[styles.input, styles.inputPort]}
-          value={port}
-          onChangeText={setPort}
-          placeholder="8766"
-          placeholderTextColor="#8e8e93"
-          keyboardType="number-pad"
-        />
+        <Pressable
+          style={[styles.modeBtn, mode === 'cloud' && styles.modeBtnOn]}
+          onPress={() => setMode('cloud')}>
+          <Text style={[styles.modeBtnText, mode === 'cloud' && styles.modeBtnTextOn]}>Nube</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.modeBtn, mode === 'local' && styles.modeBtnOn]}
+          onPress={() => setMode('local')}>
+          <Text style={[styles.modeBtnText, mode === 'local' && styles.modeBtnTextOn]}>Wi-Fi</Text>
+        </Pressable>
         <Pressable style={styles.btn} onPress={connect}>
           <Text style={styles.btnText}>Conectar</Text>
         </Pressable>
@@ -76,20 +100,42 @@ export default function TerminalScreen({ onClose }: TerminalScreenProps) {
           </Pressable>
         )}
       </View>
-      <TextInput
-        style={styles.tokenInput}
-        value={token}
-        onChangeText={setToken}
-        placeholder="Token del terminal"
-        placeholderTextColor="#8e8e93"
-        autoCapitalize="none"
-        autoCorrect={false}
-        secureTextEntry
-      />
+      {mode === 'local' && (
+        <View style={styles.localRow}>
+          <TextInput
+            style={styles.input}
+            value={host}
+            onChangeText={setHost}
+            placeholder="IP de la Mac"
+            placeholderTextColor="#8e8e93"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TextInput
+            style={[styles.input, styles.inputPort]}
+            value={port}
+            onChangeText={setPort}
+            placeholder="8766"
+            placeholderTextColor="#8e8e93"
+            keyboardType="number-pad"
+          />
+          <TextInput
+            style={styles.input}
+            value={token}
+            onChangeText={setToken}
+            placeholder="Token"
+            placeholderTextColor="#8e8e93"
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+          />
+        </View>
+      )}
       <WebView
         key={key}
         originWhitelist={['*']}
         source={{ html }}
+        injectedJavaScriptBeforeContentLoaded={injected}
         javaScriptEnabled
         domStorageEnabled
         setSupportMultipleWindows={false}
@@ -130,13 +176,30 @@ const styles = StyleSheet.create({
   pillOn: { backgroundColor: '#34c759' },
   pillWarn: { backgroundColor: '#ff9500' },
   pillErr: { backgroundColor: '#ff3b30' },
+  modeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    marginRight: 6,
+    backgroundColor: '#48484a',
+  },
+  modeBtnOn: { backgroundColor: '#10a37f' },
+  modeBtnText: { color: '#c7c7cc', fontWeight: '600', fontSize: 13 },
+  modeBtnTextOn: { color: '#ffffff' },
+  localRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#2d2d30',
+  },
   input: {
     flex: 1,
     backgroundColor: '#1c1c1e',
     borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
+    paddingVertical: 6,
+    fontSize: 13,
     color: '#ffffff',
     marginRight: 6,
   },
@@ -150,12 +213,5 @@ const styles = StyleSheet.create({
   },
   btnClose: { backgroundColor: '#48484a' },
   btnText: { color: '#ffffff', fontWeight: '600', fontSize: 13 },
-  tokenInput: {
-    backgroundColor: '#1c1c1e',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 12,
-    color: '#8e8e93',
-  },
   web: { flex: 1, backgroundColor: '#1e1e1e' },
 });
