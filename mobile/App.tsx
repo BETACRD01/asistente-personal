@@ -16,7 +16,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { ChatMessage, HubClient } from './src/api/hubClient';
 import MessageBubble from './src/components/MessageBubble';
 import SuggestionChips from './src/components/SuggestionChips';
-import { DEVICE_NAME } from './src/config';
+import { DEVICE_TOKEN } from './src/config';
 
 const SUGGESTIONS = [
   'Abre Safari',
@@ -45,7 +45,7 @@ function ChatScreen() {
       .login()
       .then(() => {
         client.setMessageHandler(message => handleMessage(message));
-        client.connect(DEVICE_NAME);
+        client.connect(DEVICE_TOKEN);
       })
       .catch(error => {
         setStatus(error.message);
@@ -115,7 +115,7 @@ function ChatScreen() {
     setMessages(prev => [...prev, { id, role: 'user', content: text }]);
     setInput('');
     setBusy(true);
-    clientRef.current?.sendCommand(DEVICE_NAME, text);
+    clientRef.current?.sendCommand(DEVICE_TOKEN, text);
   };
 
   const sendSuggestion = (text: string) => {
@@ -125,7 +125,7 @@ function ChatScreen() {
     const id = `u${Date.now()}`;
     setMessages(prev => [...prev, { id, role: 'user', content: text }]);
     setBusy(true);
-    clientRef.current?.sendCommand(DEVICE_NAME, text);
+    clientRef.current?.sendCommand(DEVICE_TOKEN, text);
   };
 
   const showWelcome = messages.length === 0;
