@@ -124,6 +124,22 @@ def _gemini_oauth_call(prompt: str, model: str):
         json={"contents": [{"parts": [{"text": prompt}]}]},
         timeout=90,
     )
+    if resp.status_code == 401:
+        # el token pudo quedar revocado o invalido: refrescamos y reintentamos una vez
+        logger.info("token OAuth 401, refrescando y reintentando (%s)", model)
+        oauth._refresh()
+        token = oauth.get_token()
+        if token:
+            resp = requests.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "x-goog-user-project": oauth.USER_PROJECT,
+                },
+                json={"contents": [{"parts": [{"text": prompt}]}]},
+                timeout=90,
+            )
     if resp.status_code != 200:
         raise RuntimeError(f"Gemini OAuth {resp.status_code}: {resp.text[:300]}")
     data = resp.json()

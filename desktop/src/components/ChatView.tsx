@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ConfigInfo, ChatMessage, DaemonClient, WsMessage } from '../api';
-import { setModel as apiSetModel } from '../api';
+import { setModel as apiSetModel, setApproval as apiSetApproval } from '../api';
 import ChatTopBar from './ChatTopBar';
 import MessageList from './MessageList';
 
@@ -13,6 +13,12 @@ interface ChatViewProps {
   models: string[];
   onModelChanged: () => void;
   onOpenFolder: () => void;
+}
+
+interface PendingApproval {
+  id: string;
+  command: string;
+  reason: string;
 }
 
 export default function ChatView({
@@ -28,6 +34,7 @@ export default function ChatView({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
 
   const handleWs = useCallback((m: WsMessage) => {
     switch (m.type) {
@@ -73,6 +80,9 @@ export default function ChatView({
           ),
         );
         break;
+      case 'approval_request':
+        setPendingApproval({ id: m.id ?? '', command: m.command ?? '', reason: m.reason ?? 'ejecutar una acción' });
+        break;
     }
   }, []);
 
@@ -99,6 +109,17 @@ export default function ChatView({
     if (res.ok) onModelChanged();
   };
 
+  const pickApproval = async (mode: string) => {
+    const res = await apiSetApproval(mode);
+    if (res.ok) onModelChanged();
+  };
+
+  const answerApproval = (approved: boolean) => {
+    if (!pendingApproval) return;
+    client.sendApproval(pendingApproval.id, approved);
+    setPendingApproval(null);
+  };
+
   return (
     <div className="chat">
       <ChatTopBar
@@ -107,9 +128,21 @@ export default function ChatView({
         status={status}
         models={models}
         currentModel={currentModel}
+        approval={config?.approval ?? 'smart'}
         onPickModel={pickModel}
+        onApproval={pickApproval}
         onOpenFolder={onOpenFolder}
       />
+      {pendingApproval && (
+        <div className="approval-bubble">
+          <div className="approval-title">¿Aprobar esta acción? <span className="approval-reason">({pendingApproval.reason})</span></div>
+          <pre className="approval-cmd">{pendingApproval.command}</pre>
+          <div className="approval-actions">
+            <button className="primary" onClick={() => answerApproval(true)}>✓ Aprobar</button>
+            <button className="danger" onClick={() => answerApproval(false)}>✕ Rechazar</button>
+          </div>
+        </div>
+      )}
       <MessageList messages={messages} busy={busy} onSuggest={send} />
       <div className="input-bar">
         <input

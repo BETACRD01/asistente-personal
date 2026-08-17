@@ -6,6 +6,7 @@ export interface ConfigInfo {
   project: string;
   admin: boolean;
   workspace: string;
+  approval: string;
   keys: Record<string, boolean>;
 }
 
@@ -51,4 +52,6 @@ export type WsMessage = {
   path?: string;
   mime?: string;
   data?: string;
+  command?: string;
+  reason?: string;
 };

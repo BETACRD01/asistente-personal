@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     # Permisos de administrador (sudo con prompt de macOS en pantalla)
     admin_mode: bool = False
 
+    # Modo de aprobacion: always (preguntar siempre) | smart (solo inseguras) | full (acceso completo)
+    approval_mode: str = "smart"
+    approval_timeout_seconds: int = 120
+
     # Carpeta de trabajo activa (proyecto seleccionado en la app)
     workspace: str = ""
 

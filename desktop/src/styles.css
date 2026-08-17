@@ -215,6 +215,46 @@ button.danger:hover {
   color: #fff;
 }
 
+.approval-bubble {
+  margin: 8px 16px;
+  padding: 12px 14px;
+  border: 1px solid #ffb74d;
+  border-radius: 10px;
+  background: rgba(255, 183, 77, 0.08);
+}
+
+.approval-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffb74d;
+  margin-bottom: 6px;
+}
+
+.approval-reason {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.approval-cmd {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 10px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 8px;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approval-select {
+  max-width: 160px;
+}
+
 .sidebar-footer {
   display: flex;
   align-items: center;

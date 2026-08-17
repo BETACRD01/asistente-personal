@@ -74,9 +74,15 @@ async def _decide(state: AgentState) -> AgentState:
 
 
 async def _execute(state: AgentState) -> AgentState:
-    """Ejecuta la herramienta elegida."""
+    """Ejecuta la herramienta elegida (pidiendo aprobacion si el modo lo pide)."""
     if state.answer:
         return state  # respuesta directa, sin herramienta que ejecutar
+    if state.tool:
+        from brain import approval
+
+        if not await approval.request_approval(state.payload or ""):
+            state.answer = "Accion rechazada por el usuario (aprobacion requerida)."
+            return state
     try:
         if state.tool == "bash":
             state.output = await run_bash(state.payload or "")

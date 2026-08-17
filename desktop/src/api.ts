@@ -110,6 +110,15 @@ export async function setAdmin(enabled: boolean): Promise<{ ok: boolean; error?:
   return res.json();
 }
 
+export async function setApproval(mode: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/api/approval`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode }),
+  });
+  return res.json();
+}
+
 export async function logout(): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch(`${BASE}/api/logout`, { method: 'POST' });
   return res.json();
@@ -156,6 +165,12 @@ export class DaemonClient {
   sendCommand(id: string, text: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'command', id, text }));
+    }
+  }
+
+  sendApproval(id: string, approved: boolean) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'approval_response', id, approved }));
     }
   }
 

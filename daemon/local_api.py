@@ -74,6 +74,7 @@ def config():
         "project": settings.vertex_project,
         "admin": settings.admin_mode,
         "workspace": settings.workspace,
+        "approval": settings.approval_mode,
         "keys": {
             "gemini": bool(settings.gemini_api_key),
             "openai": bool(settings.openai_api_key),
@@ -122,6 +123,22 @@ def set_admin(body: dict):
     settings.admin_mode = enabled
     logger.info("permisos de administrador: %s", "activados" if enabled else "desactivados")
     return {"ok": True, "admin": enabled}
+
+
+@app.post("/api/approval")
+def set_approval(body: dict):
+    """Cambia el modo de aprobacion: always (preguntar siempre) | smart (solo inseguras) | full (acceso completo)."""
+    import configure as cfg
+
+    mode = body.get("mode", "")
+    if mode not in ("always", "smart", "full"):
+        return {"ok": False, "error": "modo invalido (always|smart|full)"}
+    env = cfg.read_env()
+    env["APPROVAL_MODE"] = mode
+    cfg.write_env(env)
+    settings.approval_mode = mode
+    logger.info("modo de aprobacion: %s", mode)
+    return {"ok": True, "mode": mode}
 
 
 @app.get("/api/probe")
@@ -263,9 +280,11 @@ def set_model(body: dict):
 @app.websocket("/ws")
 async def ws(websocket: WebSocket):
     from main import handle_command
+    from brain import approval
 
     await websocket.accept()
     logger.info("escritorio conectado")
+    approval.set_sender(websocket.send_json)
     try:
         while True:
             raw = await websocket.receive_text()
@@ -274,11 +293,15 @@ async def ws(websocket: WebSocket):
             except json.JSONDecodeError:
                 await websocket.send_json({"type": "error", "message": "JSON invalido"})
                 continue
+            if message.get("type") == "approval_response":
+                approval.resolve(message.get("id", ""), bool(message.get("approved")))
+                continue
             if message.get("type") == "command":
                 async for reply in handle_command(message):
                     await websocket.send_json(reply)
     except WebSocketDisconnect:
         logger.info("escritorio desconectado")
+        approval.set_sender(None)
 
 
 async def run_local_server() -> None:
