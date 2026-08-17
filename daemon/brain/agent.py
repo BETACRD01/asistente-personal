@@ -49,12 +49,16 @@ class AgentState(BaseModel):
 
 async def _decide(state: AgentState) -> AgentState:
     """El LLM decide qué herramienta usar (con reintento si no da accion valida)."""
+    from datetime import datetime
+
+    now = datetime.now().strftime("%A, %d de %B de %Y, %H:%M")
+    date_note = f"Fecha y hora actual (siempre correctas): {now}."
     for attempt in range(3):
         prompt = (
-            f"{SYSTEM_PROMPT}\n\nPeticion del usuario: {state.command}"
+            f"{SYSTEM_PROMPT}\n\n{date_note}\nPeticion del usuario: {state.command}"
             if attempt == 0
             else (
-                f"{SYSTEM_PROMPT}\n\nPeticion del usuario: {state.command}\n"
+                f"{SYSTEM_PROMPT}\n\n{date_note}\nPeticion del usuario: {state.command}\n"
                 "Tu respuesta anterior no fue una accion valida. "
                 "Devuelve SOLO JSON con las claves exactas: answer, tool, command, script, jxa."
             )
@@ -101,17 +105,32 @@ async def _execute(state: AgentState) -> AgentState:
 
 
 async def _summarize(state: AgentState) -> AgentState:
-    """Convierte el stdout en una respuesta amigable."""
+    """Convierte el stdout en una respuesta amigable (sin inventar contenido)."""
     if state.answer:
-        return state
-    result = state.output or "(sin salida)"
-    if "![imagen](" in result:
-        # la salida ya es una imagen generada: no la resumimos con el LLM
-        state.answer = result
         return state
     from brain import llm
 
-    summary = complete(f"Resume brevemente en espanol: {result}").choices[0].message.content
+    result = (state.output or "").strip()
+    if "![imagen](" in result:
+        # la salida ya es una imagen generada: no la resumimos con el LLM
+        state.answer = result
+        state.model = llm.last_model or state.model
+        return state
+    if not result:
+        state.answer = "El comando se ejecutó sin salida."
+        state.model = llm.last_model or state.model
+        return state
+    if len(result) <= 400:
+        # salida corta: la devolvemos tal cual, sin inventar interpretaciones
+        state.answer = f"Se ejecutó `{state.payload or 'el comando'}`:\n\n{result}"
+        state.model = llm.last_model or state.model
+        return state
+    summary = complete(
+        f"El comando '{state.payload}' se ejecutó en una Mac y su salida fue:\n---\n{result}\n---\n"
+        "Responde al usuario en español explicando brevemente qué hizo el comando y muestra los "
+        "datos relevantes de la salida. NO inventes significados, definiciones ni información que "
+        "no esté en la salida. No digas que la tarea se completó si no hay evidencia."
+    ).choices[0].message.content
     state.model = llm.last_model or state.model
     state.answer = summary
     return state

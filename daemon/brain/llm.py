@@ -22,7 +22,8 @@ _REFUSAL = (
 
 _MAX_ATTEMPTS = 3
 _FALLBACKS = {
-    "gemini": ["gemini-3.6-flash", "gemini-3.1-flash-lite"],
+    # orden por fiabilidad en el tier gratis de la cuenta (3.1-flash-lite es el mas rapido/estable)
+    "gemini": ["gemini-3.1-flash-lite", "gemini-3.6-flash"],
 }
 
 # Último modelo que respondió (para mostrarlo en el chat)
@@ -198,7 +199,8 @@ def complete(prompt: str, stream: bool = False):
                     break  # error no temporal (o agotados los intentos) => siguiente modelo
 
     raise RuntimeError(
-        "Todos los modelos gratuitos estan saturados o fallaron. "
-        "Intenta en un momento o cambia de modelo en Ajustes.\n"
+        "No pude generar respuesta: los modelos gratuitos estan saturados o tu cuota se agoto. "
+        "Reintenta en unos segundos, cambia de modelo, o (si es Gemini) revisa tu sesion de Google "
+        "y los creditos en AI Studio.\n"
         + " | ".join(errors[-4:])
     )

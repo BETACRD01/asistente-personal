@@ -310,6 +310,13 @@ async def ws(websocket: WebSocket):
 
 async def run_local_server() -> None:
     """Levanta la API local (127.0.0.1:8765)."""
-    config = uvicorn.Config(app, host="127.0.0.1", port=8765, log_level="warning")
+    config = uvicorn.Config(
+        app,
+        host="127.0.0.1",
+        port=8765,
+        log_level="warning",
+        ws_ping_interval=None,
+        ws_ping_timeout=None,
+    )
     server = uvicorn.Server(config)
     await server.serve()
