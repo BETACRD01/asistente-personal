@@ -14,6 +14,7 @@ Protocolo (frames):
 """
 
 import asyncio
+import base64
 import fcntl
 import json
 import logging
@@ -170,19 +171,31 @@ async def hub_bridge() -> None:
             await asyncio.sleep(5)
 
 
-async def _tcp_pump_tcp_to_ws(reader: asyncio.StreamReader, ws: Any) -> None:
+async def _tcp_pump_tcp_to_ws(
+    reader: asyncio.StreamReader, ws: Any, conn_id: str
+) -> None:
+    """TCP -> hub (JSON base64 por conn_id)."""
     try:
         while True:
             data = await reader.read(65536)
             if not data:
                 break
-            await ws.send(data)
+            await ws.send(
+                json.dumps(
+                    {"type": "data", "id": conn_id, "data": base64.b64encode(data).decode()}
+                )
+            )
     except Exception:
         pass
+    finally:
+        try:
+            await ws.send(json.dumps({"type": "eof", "id": conn_id}))
+        except Exception:
+            pass
 
 
 async def tcp_bridge() -> None:
-    """Puente TCP Mac <-> hub (p. ej. SSH a :22) para acceder desde cualquier red."""
+    """Puente TCP Mac <-> hub (p. ej. SSH a :22); varias conexiones por conn_id."""
     headers = {"Authorization": f"Bearer {settings.device_token}"}
     while True:
         try:
@@ -191,39 +204,47 @@ async def tcp_bridge() -> None:
                 HUB_TCP_URL, additional_headers=headers, ping_interval=20
             ) as ws:
                 logger.info("tcp: conectado al hub")
-                while True:
-                    raw = await ws.recv()
-                    if isinstance(raw, str):
+                conns: dict[str, asyncio.StreamWriter] = {}
+                try:
+                    async for raw in ws:
+                        if not isinstance(raw, str):
+                            continue
                         try:
-                            msg = json.loads(raw)
+                            frame = json.loads(raw)
                         except (ValueError, TypeError):
                             continue
-                        if msg.get("type") == "connect":
-                            logger.info("tcp: abriendo conexion a %s:%s", *TCP_TARGET)
+                        ftype = frame.get("type")
+                        cid = frame.get("id")
+                        if ftype == "connect":
+                            logger.info("tcp: abriendo conexion %s a %s:%s", cid, *TCP_TARGET)
                             try:
                                 reader, writer = await asyncio.open_connection(*TCP_TARGET)
                             except Exception as exc:
                                 logger.warning("tcp: no se pudo conectar a ssh (%s)", exc)
                                 continue
-                            pump_task = asyncio.create_task(_tcp_pump_tcp_to_ws(reader, ws))
-                            try:
-                                async for raw2 in ws:
-                                    if isinstance(raw2, str):
-                                        try:
-                                            msg2 = json.loads(raw2)
-                                            if msg2.get("type") == "disconnect":
-                                                break
-                                        except (ValueError, TypeError):
-                                            continue
-                                        continue
-                                    writer.write(raw2)
+                            conns[cid] = writer
+                            asyncio.create_task(_tcp_pump_tcp_to_ws(reader, ws, cid))
+                        elif ftype == "data":
+                            writer = conns.get(cid)
+                            if writer:
+                                try:
+                                    writer.write(base64.b64decode(frame.get("data", "")))
                                     await writer.drain()
-                            finally:
-                                pump_task.cancel()
+                                except Exception:
+                                    pass
+                        elif ftype == "disconnect":
+                            writer = conns.pop(cid, None)
+                            if writer:
                                 try:
                                     writer.close()
                                 except Exception:
                                     pass
+                finally:
+                    for writer in conns.values():
+                        try:
+                            writer.close()
+                        except Exception:
+                            pass
         except Exception as exc:
             logger.warning("tcp: conexion hub caida (%s); reintento en 5s", exc)
             await asyncio.sleep(5)
