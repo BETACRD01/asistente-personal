@@ -4,6 +4,7 @@ Grafo:
   entrada → decide (LLM) → ejecuta (Bash/AppleScript) → responde
 """
 
+import asyncio
 import logging
 
 from langgraph.graph import END, StateGraph
@@ -66,7 +67,7 @@ async def _decide(state: AgentState) -> AgentState:
         try:
             from brain import llm
 
-            raw = complete(prompt).choices[0].message.content
+            raw = (await asyncio.to_thread(complete, prompt)).choices[0].message.content
             state.model = llm.last_model or state.model
         except RuntimeError as exc:
             state.answer = str(exc)
@@ -125,12 +126,13 @@ async def _summarize(state: AgentState) -> AgentState:
         state.answer = f"Se ejecutó `{state.payload or 'el comando'}`:\n\n{result}"
         state.model = llm.last_model or state.model
         return state
-    summary = complete(
+    summary = (await asyncio.to_thread(
+        complete,
         f"El comando '{state.payload}' se ejecutó en una Mac y su salida fue:\n---\n{result}\n---\n"
         "Responde al usuario en español explicando brevemente qué hizo el comando y muestra los "
         "datos relevantes de la salida. NO inventes significados, definiciones ni información que "
-        "no esté en la salida. No digas que la tarea se completó si no hay evidencia."
-    ).choices[0].message.content
+        "no esté en la salida. No digas que la tarea se completó si no hay evidencia.",
+    )).choices[0].message.content
     state.model = llm.last_model or state.model
     state.answer = summary
     return state

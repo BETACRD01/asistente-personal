@@ -96,7 +96,11 @@ def _build_kwargs(prompt: str, model: str) -> dict:
     if prefix and not model.startswith(prefix):
         model = f"{prefix}{model}"
 
-    kwargs: dict = {"model": model, "messages": [{"role": "user", "content": prompt}]}
+    kwargs: dict = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "timeout": 90,
+    }
 
     if settings.llm_provider == "ollama":
         kwargs["api_base"] = settings.ollama_host
