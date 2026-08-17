@@ -20,6 +20,7 @@ DEFAULT_MODELS = {
 class Settings(BaseSettings):
     hub_ws_url: str = "wss://api.tudominio.com/ws/mac"
     device_token: str = "change-me"
+    term_token: str = ""
 
     # Proveedor del LLM: ollama | gemini | vertex_ai | openai | anthropic | groq | openrouter
     llm_provider: str = "ollama"

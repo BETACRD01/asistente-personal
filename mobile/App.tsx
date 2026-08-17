@@ -17,6 +17,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { ChatMessage, HubClient } from './src/api/hubClient';
 import MessageBubble from './src/components/MessageBubble';
 import SuggestionChips from './src/components/SuggestionChips';
+import TerminalScreen from './src/components/TerminalScreen';
 import { DEVICE_NAME, DEVICE_TOKEN } from './src/config';
 
 const SUGGESTIONS = [
@@ -38,6 +39,7 @@ function ChatScreen() {
   const [macOnline, setMacOnline] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showConn, setShowConn] = useState(false);
+  const [termOpen, setTermOpen] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -157,6 +159,10 @@ function ChatScreen() {
 
   const showWelcome = messages.length === 0;
 
+  if (termOpen) {
+    return <TerminalScreen onClose={() => setTermOpen(false)} />;
+  }
+
   return (
     <View
       style={[
@@ -191,6 +197,11 @@ function ChatScreen() {
               <Text style={[styles.newChatText, dark ? styles.textDark : null]}>⟳ Conectar</Text>
             </Pressable>
           )}
+          <Pressable
+            style={[styles.newChat, dark ? styles.chipDark : null]}
+            onPress={() => setTermOpen(true)}>
+            <Text style={[styles.newChatText, dark ? styles.textDark : null]}>&gt;_</Text>
+          </Pressable>
           <Pressable
             style={[styles.newChat, dark ? styles.chipDark : null]}
             onPress={() => setMessages([])}>
