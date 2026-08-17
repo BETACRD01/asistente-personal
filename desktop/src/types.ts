@@ -19,6 +19,18 @@ export interface AccountInfo {
   error?: string;
 }
 
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+  count: number;
+}
+
+export interface ConversationFull extends ConversationSummary {
+  messages: ChatMessage[];
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';

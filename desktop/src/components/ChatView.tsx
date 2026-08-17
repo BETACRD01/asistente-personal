@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConfigInfo, ChatMessage, DaemonClient, WsMessage } from '../api';
-import { setModel as apiSetModel, setApproval as apiSetApproval } from '../api';
+import { setModel as apiSetModel, setApproval as apiSetApproval, saveConversation as apiSaveConversation } from '../api';
 import ChatTopBar from './ChatTopBar';
 import MessageList from './MessageList';
 
@@ -11,6 +11,9 @@ interface ChatViewProps {
   connected: boolean;
   project: string | null;
   models: string[];
+  convId: string;
+  initialMessages: ChatMessage[];
+  onHistoryChange: () => void;
   onModelChanged: () => void;
   onOpenFolder: () => void;
 }
@@ -28,13 +31,43 @@ export default function ChatView({
   connected,
   project,
   models,
+  convId,
+  initialMessages,
+  onHistoryChange,
   onModelChanged,
   onOpenFolder,
 }: ChatViewProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
+  const messagesRef = useRef<ChatMessage[]>(initialMessages);
+  const convIdRef = useRef(convId);
+  const persist = useCallback(async () => {
+    const msgs = messagesRef.current;
+    if (!msgs.length) return;
+    const title = msgs.find((m) => m.role === 'user')?.content.slice(0, 60) || 'Conversación';
+    try {
+      await apiSaveConversation({ id: convIdRef.current, title, messages: msgs });
+      onHistoryChange();
+    } catch {
+      /* sin daemon */
+    }
+  }, [onHistoryChange]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    convIdRef.current = convId;
+  }, [convId]);
+
+  useEffect(() => {
+    return () => {
+      persist();
+    };
+  }, [persist]);
 
   const handleWs = useCallback((m: WsMessage) => {
     switch (m.type) {
@@ -71,6 +104,7 @@ export default function ChatView({
                 : x,
           ),
         );
+        persist();
         break;
       case 'error':
         setBusy(false);
@@ -84,7 +118,7 @@ export default function ChatView({
         setPendingApproval({ id: m.id ?? '', command: m.command ?? '', reason: m.reason ?? 'ejecutar una acción' });
         break;
     }
-  }, []);
+  }, [persist]);
 
   useEffect(() => {
     client.onMessage = handleWs;

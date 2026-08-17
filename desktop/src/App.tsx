@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ConfigInfo } from './types';
-import { DaemonClient, getConfig, getModels as apiGetModels } from './api';
+import type { ChatMessage, ConfigInfo, ConversationSummary } from './types';
+import {
+  DaemonClient,
+  deleteConversation as apiDeleteConversation,
+  getConfig,
+  getConversation as apiGetConversation,
+  getConversations as apiGetConversations,
+  getModels as apiGetModels,
+} from './api';
 import { FALLBACK_MODELS } from './constants';
 import { useProjects } from './hooks/useProjects';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import SettingsView from './components/SettingsView';
+
+const genId = () => `conv${Date.now()}`;
 
 export default function App() {
   const [config, setConfig] = useState<ConfigInfo | null>(null);
@@ -14,6 +23,9 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [session, setSession] = useState(0);
   const [models, setModels] = useState<string[]>(FALLBACK_MODELS);
+  const [convId, setConvId] = useState<string>(genId());
+  const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
+  const [history, setHistory] = useState<ConversationSummary[]>([]);
   const { projects, project, loadProjects, openFolderPicker, selectProject, removeProject } = useProjects();
   const clientRef = useRef<DaemonClient | null>(null);
   if (!clientRef.current) {
@@ -23,15 +35,25 @@ export default function App() {
     });
   }
 
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await apiGetConversations();
+      setHistory(res.conversations ?? []);
+    } catch {
+      /* daemon sin historial */
+    }
+  }, []);
+
   useEffect(() => {
     getConfig()
       .then(setConfig)
       .catch(() => setStatus('Daemon no disponible (python main.py)'));
     loadProjects();
+    loadHistory();
     apiGetModels().then((m) => m.length && setModels(m)).catch(() => undefined);
     clientRef.current?.connect();
     return () => clientRef.current?.disconnect();
-  }, [loadProjects]);
+  }, [loadProjects, loadHistory]);
 
   const refresh = useCallback(() => {
     getConfig()
@@ -39,6 +61,29 @@ export default function App() {
       .catch(() => undefined);
     apiGetModels().then((m) => m.length && setModels(m)).catch(() => undefined);
   }, []);
+
+  const newTask = useCallback(() => {
+    setInitialMessages([]);
+    setConvId(genId());
+    setSession((s) => s + 1);
+  }, []);
+
+  const openConversation = useCallback(async (id: string) => {
+    const conv = await apiGetConversation(id);
+    if (!conv) return;
+    setInitialMessages(conv.messages ?? []);
+    setConvId(id);
+    setSession((s) => s + 1);
+  }, []);
+
+  const delConversation = useCallback(
+    async (id: string) => {
+      await apiDeleteConversation(id).catch(() => undefined);
+      await loadHistory();
+      if (id === convId) newTask();
+    },
+    [convId, loadHistory, newTask]
+  );
 
   return (
     <div className="app">
@@ -48,8 +93,12 @@ export default function App() {
         status={status}
         projects={projects}
         project={project}
+        history={history}
+        convId={convId}
         onView={setView}
-        onNewTask={() => setSession((s) => s + 1)}
+        onNewTask={newTask}
+        onOpenConversation={openConversation}
+        onDeleteConversation={delConversation}
         onOpenFolder={openFolderPicker}
         onSelectProject={selectProject}
         onRemoveProject={removeProject}
@@ -64,6 +113,9 @@ export default function App() {
             connected={connected}
             project={project}
             models={models}
+            convId={convId}
+            initialMessages={initialMessages}
+            onHistoryChange={loadHistory}
             onModelChanged={refresh}
             onOpenFolder={openFolderPicker}
           />

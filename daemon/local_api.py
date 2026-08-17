@@ -281,6 +281,48 @@ def set_model(body: dict):
     return {"ok": True, "model": model}
 
 
+@app.get("/api/conversations")
+def conversations():
+    """Lista las conversaciones guardadas (id, titulo, fechas, n. de mensajes)."""
+    from conversations import list_conversations
+
+    return {"ok": True, "conversations": list_conversations()}
+
+
+@app.get("/api/conversations/{conv_id}")
+def conversation(conv_id: str):
+    from conversations import get
+
+    conv = get(conv_id)
+    if not conv:
+        return {"ok": False, "error": "no existe"}
+    return {"ok": True, "conversation": conv}
+
+
+@app.post("/api/conversations")
+def save_conversation(body: dict):
+    """Guarda (crea o actualiza) una conversacion completa."""
+    from conversations import upsert
+
+    conv_id = body.get("id", "")
+    if not conv_id:
+        return {"ok": False, "error": "falta el id de la conversacion"}
+    conv = {
+        "id": conv_id,
+        "title": body.get("title", "Conversación"),
+        "messages": body.get("messages", []),
+    }
+    upsert(conv)
+    return {"ok": True}
+
+
+@app.post("/api/conversations/delete")
+def delete_conversation(body: dict):
+    from conversations import delete
+
+    return {"ok": delete(body.get("id", ""))}
+
+
 @app.websocket("/ws")
 async def ws(websocket: WebSocket):
     from main import handle_command

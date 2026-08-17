@@ -174,6 +174,24 @@ body {
   color: #ff6b6b;
 }
 
+.projects.conversations {
+  flex: 0 1 220px;
+  min-height: 0;
+}
+
+.conv-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conv-meta {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: 4px;
+}
+
 .section-title {
   display: flex;
   align-items: center;

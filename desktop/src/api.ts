@@ -1,10 +1,20 @@
-import type { AccountInfo, ChatMessage, ConfigInfo, ConfigureResponse, WsMessage } from './types';
+import type {
+  AccountInfo,
+  ChatMessage,
+  ConfigInfo,
+  ConfigureResponse,
+  ConversationFull,
+  ConversationSummary,
+  WsMessage,
+} from './types';
 
 export type {
   AccountInfo,
   ChatMessage,
   ConfigInfo,
   ConfigureResponse,
+  ConversationFull,
+  ConversationSummary,
   WsMessage,
 };
 
@@ -129,6 +139,39 @@ export async function removeApiKey(provider: string): Promise<{ ok: boolean; err
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider }),
+  });
+  return res.json();
+}
+
+export async function getConversations(): Promise<{ ok: boolean; conversations: ConversationSummary[] }> {
+  const res = await fetch(`${BASE}/api/conversations`);
+  return res.json();
+}
+
+export async function getConversation(id: string): Promise<ConversationFull | null> {
+  const res = await fetch(`${BASE}/api/conversations/${encodeURIComponent(id)}`);
+  const data = await res.json();
+  return data?.ok ? data.conversation : null;
+}
+
+export async function saveConversation(conv: {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+}): Promise<{ ok: boolean }> {
+  const res = await fetch(`${BASE}/api/conversations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(conv),
+  });
+  return res.json();
+}
+
+export async function deleteConversation(id: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${BASE}/api/conversations/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
   });
   return res.json();
 }

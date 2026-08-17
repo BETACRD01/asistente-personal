@@ -11,6 +11,7 @@ venv/
 
 # Datos locales del daemon (carpetas de trabajo de la Mac)
 daemon/projects.json
+daemon/conversations.json
 
 # Flutter / Dart (por si se agrega app movil)
 .dart_tool/
