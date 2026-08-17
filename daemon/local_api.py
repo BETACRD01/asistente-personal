@@ -215,8 +215,9 @@ def oauth_status():
 
 @app.get("/api/models")
 def models():
-    """Modelos disponibles para la sesion actual (los de la cuenta si hay login)."""
+    """Modelos disponibles para la sesion actual (cuenta Google o API key)."""
     from brain import oauth
+    from brain import models as model_list
 
     if oauth.is_logged_in():
         try:
@@ -225,7 +226,10 @@ def models():
                 return {"ok": True, "logged": True, "models": names}
         except Exception as exc:
             logger.warning("no se pudieron listar modelos de la cuenta: %s", exc)
-    return {"ok": True, "logged": oauth.is_logged_in(), "models": ["gemini-3.6-flash", "gemini-3.1-flash-lite"]}
+    names = model_list.list_key_models(settings.llm_provider)
+    if not names:
+        names = model_list.default_models(settings.llm_provider)
+    return {"ok": True, "logged": oauth.is_logged_in(), "models": names}
 
 
 @app.post("/api/login")

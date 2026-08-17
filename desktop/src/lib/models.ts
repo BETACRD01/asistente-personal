@@ -9,6 +9,11 @@ export const MODEL_LABELS: Record<string, string> = {
   'gemini-3.6-flash': 'Gemini 3.6 Flash Low',
   'gemini-3.7-flash': 'Gemini 3.7 Flash Medium',
   'gemini-3-flash-preview': 'Gemini 3 Flash Preview',
+  'gemini-flash-latest': 'Gemini Flash (latest)',
+  'gemini-flash-lite-latest': 'Gemini Flash Lite (latest)',
+  'gemini-pro-latest': 'Gemini Pro (latest)',
+  'gemini-3.1-pro-preview-customtools': 'Gemini 3.1 Pro (custom tools)',
+  'gemini-omni-flash-preview': 'Gemini Omni Flash Preview',
 };
 
 export const isPaidModel = (m: string) => m.includes('pro') || m.includes('preview');
