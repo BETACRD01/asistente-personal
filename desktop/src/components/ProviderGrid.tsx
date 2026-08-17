@@ -37,11 +37,9 @@ export default function ProviderGrid({
                 <button onClick={() => onConnect(p.id)} disabled={busyProvider !== null}>
                   {busyProvider === p.id ? '…' : 'Conectar'}
                 </button>
-                {hasKeys[p.id] && (
-                  <button className="danger" onClick={() => onRemoveKey(p.id)} title="Eliminar API key">
-                    🗑 Eliminar
-                  </button>
-                )}
+                <button className={hasKeys[p.id] ? 'danger' : 'ghost'} disabled={!hasKeys[p.id]} onClick={() => onRemoveKey(p.id)} title="Eliminar API key">
+                  🗑 Eliminar
+                </button>
               </>
             ) : (
               <button onClick={() => onConnect(p.id)} disabled={busyProvider !== null}>

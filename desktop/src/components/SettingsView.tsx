@@ -54,6 +54,7 @@ export default function SettingsView({ config, models, onConnected, onModelChang
     try {
       const res = await apiRemoveKey(id);
       setMsg(res.ok ? `✓ API key de ${id} eliminada` : `⚠ ${res.error}`);
+      setKeys({ ...keys, [id]: '' });
       onModelChanged();
     } catch (e) {
       setMsg(`⚠ ${String(e)}`);

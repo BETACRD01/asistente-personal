@@ -215,6 +215,17 @@ button.danger:hover {
   color: #fff;
 }
 
+button.ghost {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .approval-bubble {
   margin: 8px 16px;
   padding: 12px 14px;
