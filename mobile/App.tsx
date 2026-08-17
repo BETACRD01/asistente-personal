@@ -128,10 +128,34 @@ function ChatScreen() {
     clientRef.current?.sendCommand(DEVICE_TOKEN, text);
   };
 
+  const reconnect = useCallback(() => {
+    const client = clientRef.current;
+    if (!client) {
+      return;
+    }
+    setConnected(false);
+    setStatus('Conectando...');
+    client.disconnect();
+    client
+      .login()
+      .then(() => {
+        client.setMessageHandler(handleMessage);
+        client.connect(DEVICE_TOKEN);
+      })
+      .catch(error => {
+        setStatus(error.message);
+      });
+  }, [handleMessage]);
+
   const showWelcome = messages.length === 0;
 
   return (
-    <View style={[styles.container, dark ? styles.containerDark : null, { paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.container,
+        dark ? styles.containerDark : null,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}>
       <View style={[styles.header, dark ? styles.headerDark : null]}>
         <View style={styles.brand}>
           <View style={styles.logo}>
@@ -139,17 +163,27 @@ function ChatScreen() {
           </View>
           <View>
             <Text style={[styles.title, dark ? styles.textDark : null]}>Asistente IA</Text>
-            <View style={styles.statusRow}>
-              <View style={[styles.dot, connected ? styles.dotOn : styles.dotOff]} />
-              <Text style={styles.status}>{status}</Text>
+            <View style={[styles.statusPill, connected ? styles.pillOn : styles.pillOff]}>
+              <Text style={styles.statusPillText}>
+                {connected ? 'Conectado a tu Mac' : status}
+              </Text>
             </View>
           </View>
         </View>
-        <Pressable
-          style={[styles.newChat, dark ? styles.chipDark : null]}
-          onPress={() => setMessages([])}>
-          <Text style={[styles.newChatText, dark ? styles.textDark : null]}>✎ Nuevo</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          {!connected && (
+            <Pressable
+              style={[styles.reconnect, dark ? styles.chipDark : null]}
+              onPress={reconnect}>
+              <Text style={[styles.newChatText, dark ? styles.textDark : null]}>⟳ Conectar</Text>
+            </Pressable>
+          )}
+          <Pressable
+            style={[styles.newChat, dark ? styles.chipDark : null]}
+            onPress={() => setMessages([])}>
+            <Text style={[styles.newChatText, dark ? styles.textDark : null]}>✎ Nuevo</Text>
+          </Pressable>
+        </View>
       </View>
 
       {showWelcome ? (
@@ -238,11 +272,26 @@ const styles = StyleSheet.create({
   },
   logoText: { fontSize: 18 },
   title: { fontSize: 17, fontWeight: '700', color: '#1d1d1f' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  dot: { width: 7, height: 7, borderRadius: 4, marginRight: 5 },
-  dotOn: { backgroundColor: '#34c759' },
-  dotOff: { backgroundColor: '#ff3b30' },
-  status: { fontSize: 12, color: '#6e6e73' },
+  statusPill: {
+    alignSelf: 'flex-start',
+    marginTop: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  pillOn: { backgroundColor: '#34c759' },
+  pillOff: { backgroundColor: '#ff9500' },
+  statusPillText: { fontSize: 11, color: '#ffffff', fontWeight: '600' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  reconnect: {
+    backgroundColor: '#ffffff',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ff9500',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 6,
+  },
   newChat: {
     backgroundColor: '#ffffff',
     borderWidth: StyleSheet.hairlineWidth,
