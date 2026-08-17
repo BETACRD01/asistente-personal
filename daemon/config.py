@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     bash_timeout_seconds: int = 30
     max_command_length: int = 4000
 
+    # Carpeta de trabajo activa (proyecto seleccionado en la app)
+    workspace: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

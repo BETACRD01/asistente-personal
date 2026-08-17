@@ -1,16 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { open } from '@tauri-apps/plugin-dialog';
 import {
   AccountInfo,
   ChatMessage,
   ConfigInfo,
   DaemonClient,
+  addProject as apiAddProject,
   configure as apiConfigure,
   getAccount as apiGetAccount,
   getConfig,
   getModels as apiGetModels,
-  getProjects,
+  getProjects as apiGetProjects,
   login as apiLogin,
+  removeProject as apiRemoveProject,
   setModel as apiSetModel,
+  setProject as apiSetProject,
 } from './api';
 
 const PROVIDERS: {
@@ -227,6 +231,7 @@ function ChatView({
   project,
   models,
   onModelChanged,
+  onPickFolder,
 }: {
   config: ConfigInfo | null;
   client: DaemonClient;
@@ -235,6 +240,7 @@ function ChatView({
   project: string | null;
   models: string[];
   onModelChanged: () => void;
+  onPickFolder: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -304,9 +310,12 @@ function ChatView({
   return (
     <div className="chat">
       <div className="chat-top">
-        <div className="project-chip" title={project ?? 'Mac local'}>
-          {(project ?? 'Mac')[0].toUpperCase()}
-        </div>
+        <button className="project-chip" title={project ?? 'Selecciona una carpeta'} onClick={onPickFolder}>
+          {(project ?? 'Abrir').split('/').pop()}
+        </button>
+        <button className="folder-btn" onClick={onPickFolder} title="Abrir carpeta del proyecto">
+          📂
+        </button>
         <select
           className="model-select"
           value={currentModel}
@@ -397,11 +406,45 @@ export default function App() {
     getConfig()
       .then(setConfig)
       .catch(() => setStatus('Daemon no disponible (python main.py)'));
-    getProjects().then(setProjects).catch(() => undefined);
+    loadProjects();
     apiGetModels().then((m) => m.length && setModels(m)).catch(() => undefined);
     clientRef.current?.connect();
     return () => clientRef.current?.disconnect();
   }, []);
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const st = await apiGetProjects();
+      setProjects(st.projects ?? []);
+      setProject(st.active || null);
+    } catch {
+      /* daemon sin proyectos */
+    }
+  }, []);
+
+  const pickFolder = useCallback(async () => {
+    const dir = await open({ directory: true, multiple: false, title: 'Selecciona la carpeta del proyecto' });
+    if (typeof dir === 'string' && dir) {
+      await apiAddProject(dir);
+      await loadProjects();
+    }
+  }, [loadProjects]);
+
+  const selectProject = useCallback(
+    async (p: string) => {
+      setProject(p);
+      await apiSetProject(p).catch(() => undefined);
+    },
+    []
+  );
+
+  const removeProjectItem = useCallback(
+    async (p: string) => {
+      await apiRemoveProject(p).catch(() => undefined);
+      await loadProjects();
+    },
+    [loadProjects]
+  );
 
   const refresh = useCallback(() => {
     getConfig()
@@ -428,16 +471,25 @@ export default function App() {
           <button>Programadas</button>
           <button>Complementos</button>
         </nav>
-        <div className="section-title">Proyectos</div>
+        <div className="section-title">
+          Proyectos
+          <button className="folder-btn" onClick={pickFolder} title="Abrir carpeta">
+            📂
+          </button>
+        </div>
         <ul className="projects">
+          {projects.length === 0 && <li className="empty">Ninguna carpeta. Toca 📂 para abrir una.</li>}
           {projects.map((p) => (
             <li
               key={p}
               className={project === p ? 'active' : ''}
-              onClick={() => setProject(p)}
+              onClick={() => selectProject(p)}
               title={p}
             >
               {p.split('/').slice(-2).join('/')}
+              <span className="remove" onClick={(e) => { e.stopPropagation(); removeProjectItem(p); }}>
+                ✕
+              </span>
             </li>
           ))}
         </ul>
@@ -463,6 +515,7 @@ export default function App() {
             project={project}
             models={models}
             onModelChanged={refresh}
+            onPickFolder={pickFolder}
           />
         ) : view === 'settings' ? (
           <SettingsView

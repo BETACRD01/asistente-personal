@@ -39,10 +39,36 @@ export interface AccountInfo {
 
 const BASE = 'http://127.0.0.1:8765';
 
-export async function getProjects(): Promise<string[]> {
+export async function getProjects(): Promise<{ projects: string[]; active: string }> {
   const res = await fetch(`${BASE}/api/projects`);
-  const data = await res.json();
-  return data.projects ?? [];
+  return res.json();
+}
+
+export async function addProject(path: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/api/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  return res.json();
+}
+
+export async function removeProject(path: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/api/projects/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  return res.json();
+}
+
+export async function setProject(path: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/api/project`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  return res.json();
 }
 
 export async function getConfig(): Promise<ConfigInfo> {

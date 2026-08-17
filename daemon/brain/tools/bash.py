@@ -33,8 +33,12 @@ def _validate(cmd: str) -> None:
 async def run_bash(command: str) -> str:
     """Ejecuta un comando de terminal y devuelve stdout+stderr."""
     _validate(command)
+    from projects import get_workspace
+
+    cwd = get_workspace()
     proc = await asyncio.create_subprocess_shell(
         command,
+        cwd=cwd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )

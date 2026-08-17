@@ -31,18 +31,35 @@ app.add_middleware(
 
 @app.get("/api/projects")
 def projects():
-    """Lista carpetas de proyectos (Developer, Desktop, Documents)."""
-    from pathlib import Path
+    """Carpetas de trabajo guardadas por el usuario + la activa."""
+    from projects import state
 
-    home = Path.home()
-    found = []
-    for folder in ("Developer", "Desktop", "Documents"):
-        base = home / folder
-        if base.is_dir():
-            for child in sorted(base.iterdir()):
-                if child.is_dir() and not child.name.startswith("."):
-                    found.append(str(child))
-    return {"projects": found}
+    st = state()
+    return {"projects": st["projects"], "active": st["active"]}
+
+
+@app.post("/api/projects")
+def add_project(body: dict):
+    """Añade una carpeta de trabajo (la deja activa)."""
+    from projects import add_project as _add
+
+    return _add(body.get("path", ""))
+
+
+@app.post("/api/projects/remove")
+def remove_project(body: dict):
+    """Elimina una carpeta de trabajo."""
+    from projects import remove_project as _remove
+
+    return _remove(body.get("path", ""))
+
+
+@app.post("/api/project")
+def set_project(body: dict):
+    """Cambia la carpeta de trabajo activa."""
+    from projects import set_active
+
+    return set_active(body.get("path", ""))
 
 
 @app.get("/api/config")
