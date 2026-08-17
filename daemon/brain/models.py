@@ -32,6 +32,12 @@ _EXCLUDE = (
     "pretraining",
     "imagen",
     "image",
+    "content-safety",
+    "safety",
+    "classifier",
+    "guard",
+    "rerank",
+    "sorter",
 )
 
 DEFAULT_FALLBACK = {
