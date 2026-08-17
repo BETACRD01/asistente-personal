@@ -39,6 +39,21 @@ const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
 
 const isPaidModel = (m: string) => m.includes('pro') || m.includes('preview');
 
+const MODEL_LABELS: Record<string, string> = {
+  'gemini-2.5-pro': 'Gemini 2.5 Pro',
+  'gemini-2.5-flash': 'Gemini 2.5 Flash',
+  'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
+  'gemini-3.1-pro-preview': 'Gemini 3.1 Pro Low',
+  'gemini-3.1-flash-lite': 'Gemini 3.1 Flash Lite',
+  'gemini-3.5-flash': 'Gemini 3.5 Flash Medium',
+  'gemini-3.5-flash-lite': 'Gemini 3.5 Flash Lite',
+  'gemini-3.6-flash': 'Gemini 3.6 Flash Low',
+  'gemini-3.7-flash': 'Gemini 3.7 Flash Medium',
+  'gemini-3-flash-preview': 'Gemini 3 Flash Preview',
+};
+
+const modelLabel = (m: string) => MODEL_LABELS[m] ?? m;
+
 function SettingsView({
   config,
   models,
@@ -183,7 +198,7 @@ function SettingsView({
       <h2 className="section-title">Modelo</h2>
       <div className="card">
         <div className="billing">
-          Activo: <b>{config?.model ?? '—'}</b>
+          Activo: <b>{(config?.model ? (isPaidModel(config.model) ? '⚠ ' : '') + modelLabel(config.model) : '—')}</b>
         </div>
         <div className="model-list">
           {models.map((m) => (
@@ -192,7 +207,7 @@ function SettingsView({
               className={m === config?.model ? 'model active' : 'model'}
               onClick={() => pickModel(m)}
             >
-              {(isPaidModel(m) ? '⚠ ' : '') + m}
+              {(isPaidModel(m) ? '⚠ ' : '') + modelLabel(m)}
             </button>
           ))}
         </div>
@@ -300,11 +315,13 @@ function ChatView({
           title="Modelo activo"
         >
           {!models.includes(currentModel) && currentModel && (
-            <option value={currentModel}>{(isPaidModel(currentModel) ? '⚠ ' : '') + currentModel}</option>
+            <option value={currentModel}>
+              {(isPaidModel(currentModel) ? '⚠ ' : '') + modelLabel(currentModel)}
+            </option>
           )}
           {models.map((m) => (
             <option key={m} value={m}>
-              {(isPaidModel(m) ? '⚠ ' : '') + m}
+              {(isPaidModel(m) ? '⚠ ' : '') + modelLabel(m)}
             </option>
           ))}
         </select>
