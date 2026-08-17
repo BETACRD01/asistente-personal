@@ -116,23 +116,34 @@ def configure(body: dict):
         return {"ok": False, "error": "vertex_ai factura tu cuenta cloud y esta bloqueado; usa un proveedor gratuito"}
 
     info = cfg.PROVIDERS[provider]
-    if info["key_env"] and not key:
-        if not cfg.read_env().get(info["key_env"]):
-            return {"ok": False, "error": f"falta la API key de {provider}"}
+
+    # Gemini: con sesion iniciada en Google la API key es opcional
+    needs_key = bool(info["key_env"]) and not key
+    if needs_key and provider == "gemini":
+        from brain import oauth
+
+        if oauth.is_logged_in():
+            needs_key = False
+    if needs_key and not cfg.read_env().get(info["key_env"]):
+        hint = " o inicia sesion con Google" if provider == "gemini" else ""
+        return {"ok": False, "error": f"falta la API key de {provider}{hint}"}
 
     env = cfg.read_env()
+    old_provider = env.get("LLM_PROVIDER")
     env["LLM_PROVIDER"] = provider
     if info["key_env"] and key:
         env[info["key_env"]] = key
-    env["LLM_MODEL"] = info["model"]
+    # conserva el modelo elegido si es el mismo proveedor
+    if provider != old_provider or not env.get("LLM_MODEL"):
+        env["LLM_MODEL"] = info["model"]
     cfg.write_env(env)
 
     # reflejar el cambio en memoria (sin reiniciar el daemon)
     settings.llm_provider = provider
-    settings.llm_model = info["model"]
+    settings.llm_model = env.get("LLM_MODEL") or info["model"]
     if info["key_env"] and key:
         setattr(settings, info["key_env"].lower(), key)
-    return {"ok": True, "provider": provider, "model": info["model"]}
+    return {"ok": True, "provider": provider, "model": settings.llm_model}
 
 
 @app.get("/api/account")
