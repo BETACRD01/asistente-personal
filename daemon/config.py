@@ -1,83 +1,15 @@
-from pathlib import Path
-
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
 
-# Modelos por defecto según proveedor (estilo opencode/codex)
-DEFAULT_MODELS = {
-    "ollama": "llama3.2",
-    "gemini": "gemini-3.6-flash",
-    "vertex_ai": "gemini-2.5-flash",
-    "openai": "gpt-4o",
-    "anthropic": "claude-sonnet-4-20250514",
-    "groq": "llama-3.3-70b-versatile",
-    "openrouter": "google/gemini-2.5-flash",
-}
-
 
 class Settings(BaseSettings):
-    hub_ws_url: str = "wss://api.tudominio.com/ws/mac"
+    hub_ws_url: str = "wss://agentrelay.duckdns.org/ws/mac"
     device_token: str = "change-me"
     term_token: str = ""
 
-    # Proveedor del LLM: ollama | gemini | vertex_ai | openai | anthropic | groq | openrouter
-    llm_provider: str = "ollama"
-    llm_model: str = ""
-
-    ollama_host: str = "http://localhost:11434"
-
-    # Vertex AI (login con cuenta de Google, sin API key)
-    vertex_project: str = ""
-    vertex_location: str = "us-central1"
-
-    # API keys (opcionales, según proveedor elegido)
-    gemini_api_key: str = ""
-    openai_api_key: str = ""
-    anthropic_api_key: str = ""
-    groq_api_key: str = ""
-    openrouter_api_key: str = ""
-
-    # OAuth de cuenta Google (login personal, free tier Gemini sin API key)
-    gemini_oauth_client_id: str = ""
-    gemini_oauth_client_secret: str = ""
-    gemini_oauth_refresh_token: str = ""
-    gemini_oauth_access_token: str = ""
-    gemini_oauth_expires_at: float = 0.0
-
-    # Modo Codex: free_only (por defecto) | paid (solo con confirmacion por sesion)
-    codex_mode: str = "free_only"
-    codex_allow_paid: bool = False
-
-    allowed_tools_raw: str = "bash,applescript,generate_image"
-    bash_timeout_seconds: int = 30
-    max_command_length: int = 4000
-
-    # Permisos de administrador (sudo con prompt de macOS en pantalla)
-    admin_mode: bool = False
-
-    # Modo de aprobacion: always (preguntar siempre) | smart (solo inseguras) | full (acceso completo)
-    approval_mode: str = "smart"
-    approval_timeout_seconds: int = 120
-
-    # Carpeta de trabajo activa (proyecto seleccionado en la app)
-    workspace: str = ""
-
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    @property
-    def allowed_tools(self) -> list[str]:
-        return [t.strip() for t in self.allowed_tools_raw.split(",") if t.strip()]
-
-    @property
-    def litellm_model(self) -> str:
-        model = self.llm_model or DEFAULT_MODELS.get(self.llm_provider, "llama3.2")
-        if self.llm_provider in {"ollama", "gemini", "groq", "openrouter", "vertex_ai"}:
-            return f"{self.llm_provider}/{model}"
-        return model
 
 
 settings = Settings()
-
-ROOT_DIR = Path(__file__).resolve().parent.parent
