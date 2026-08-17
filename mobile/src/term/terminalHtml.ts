@@ -229,17 +229,19 @@ export const TERMINAL_HTML = `<!doctype html>
 <script>
 (function(){
   var host='__HOST__', port=__PORT__, token='__TOKEN__';
+  function post(s){ try{ window.ReactNativeWebView && window.ReactNativeWebView.postMessage(s); }catch(e){} }
   var term = new Terminal({cursorBlink:true, fontFamily:'Menlo, Monaco, monospace', fontSize:14, scrollback:5000, theme:{background:'#1e1e1e', foreground:'#d4d4d4'}});
   term.open(document.getElementById('term'));
-  var ws=null, retry=null;
+  var ws=null;
   function connect(){
+    post('connecting');
     try{ ws = new WebSocket('ws://'+host+':'+port+'/term?token='+encodeURIComponent(token)); }
-    catch(e){ term.writeln('\\r\\n[error] no se pudo conectar: '+e); return; }
+    catch(e){ term.writeln('\\r\\n[error] no se pudo conectar: '+e); post('error'); return; }
     ws.binaryType='arraybuffer';
-    ws.onopen=function(){ term.writeln('\\x1b[32mConectado a la Mac ('+host+') \\x1b[0m'); term.focus(); sendResize(); };
+    ws.onopen=function(){ post('connected'); term.writeln('\\x1b[32mConectado a la Mac ('+host+') \\x1b[0m'); term.focus(); sendResize(); };
     ws.onmessage=function(ev){ if(ev.data instanceof ArrayBuffer){ term.write(new Uint8Array(ev.data)); } };
-    ws.onclose=function(){ if(!retry){ term.writeln('\\r\\n\\x1b[31mConexion cerrada\\x1b[0m'); } };
-    ws.onerror=function(){ term.writeln('\\r\\n\\x1b[31mError de conexion\\x1b[0m'); };
+    ws.onclose=function(){ post('disconnected'); term.writeln('\\r\\n\\x1b[31mConexion cerrada\\x1b[0m'); };
+    ws.onerror=function(){ post('error'); term.writeln('\\r\\n\\x1b[31mError de conexion\\x1b[0m'); };
   }
   function sendResize(){
     if(ws && ws.readyState===1){
