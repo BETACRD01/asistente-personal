@@ -202,7 +202,14 @@ def account():
     from brain import oauth
 
     if oauth.is_logged_in():
-        return {"ok": True, "email": oauth.get_email() or "", "logged": True}
+        scopes = oauth.check_scopes()
+        return {
+            "ok": True,
+            "email": oauth.get_email() or "",
+            "logged": True,
+            "scopes_ok": scopes["ok"],
+            "scopes": scopes["scopes"],
+        }
     return {"ok": True, "email": "", "logged": False}
 
 

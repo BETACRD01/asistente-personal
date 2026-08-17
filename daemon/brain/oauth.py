@@ -133,6 +133,21 @@ def get_token() -> str | None:
     return settings.gemini_oauth_access_token
 
 
+def check_scopes() -> dict:
+    """Scopes reales del token (para verificar que autorizaste el acceso completo)."""
+    token = get_token()
+    if not token:
+        return {"ok": False, "scopes": []}
+    try:
+        r = requests.get("https://oauth2.googleapis.com/tokeninfo", params={"access_token": token}, timeout=15)
+        scopes = r.json().get("scope", "").split()
+        ok = any("cloud-platform" in s or "generative-language" in s for s in scopes)
+        return {"ok": ok, "scopes": scopes}
+    except Exception as exc:
+        logger.warning("no se pudieron verificar scopes: %s", exc)
+        return {"ok": False, "scopes": []}
+
+
 def is_logged_in() -> bool:
     return configured() and bool(settings.gemini_oauth_refresh_token)
 

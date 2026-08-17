@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { ChatMessage } from '../types';
 import { SUGGESTIONS } from '../constants';
 import { isPaidModel, modelLabel } from '../lib/models';
+import MarkdownText from './MarkdownText';
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -37,6 +38,8 @@ export default function MessageList({ messages, busy, onSuggest }: MessageListPr
           <div className="bubble-text">
             {m.image ? (
               <img className="bubble-img" src={m.image} alt="imagen generada" />
+            ) : m.role === 'assistant' ? (
+              <MarkdownText content={m.content} />
             ) : (
               m.content
             )}
