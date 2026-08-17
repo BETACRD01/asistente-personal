@@ -301,14 +301,13 @@ async def ws_term(websocket: WebSocket, token: str | None = None, device: str | 
     if not token:
         await websocket.close(code=4001, reason="missing token")
         return
+    is_app = False
     try:
-        sub = decode_token(token).get("sub")
+        is_app = decode_token(token).get("sub") == "app"
     except Exception as exc:
         logger.warning("ws_term decode fallo: %s", exc)
+    if not is_app and not login_device_token(token):
         await websocket.close(code=4001, reason="invalid token")
-        return
-    if sub != "app":
-        await websocket.close(code=4001, reason="not an app token")
         return
     if not device or device not in settings.device_tokens:
         await websocket.close(code=4001, reason="unknown device")
