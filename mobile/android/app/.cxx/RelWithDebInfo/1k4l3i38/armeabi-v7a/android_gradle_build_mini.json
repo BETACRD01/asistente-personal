@@ -1,0 +1,49 @@
+{
+  "buildFiles": [
+    "/Users/macbookairm1/Developer/asistente-personal/mobile/node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt",
+    "/Users/macbookairm1/Developer/asistente-personal/mobile/node_modules/react-native-webview/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/macbookairm1/Developer/asistente-personal/mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/macbookairm1/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/macbookairm1/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/.cxx/RelWithDebInfo/1k4l3i38/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "react_codegen_safeareacontext::@7984cd80db47aa7b952a": {
+      "artifactName": "react_codegen_safeareacontext",
+      "abi": "armeabi-v7a",
+      "output": "/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/build/intermediates/cxx/RelWithDebInfo/1k4l3i38/obj/armeabi-v7a/libreact_codegen_safeareacontext.so",
+      "runtimeFiles": [
+        "/Users/macbookairm1/.gradle/caches/9.4.1/transforms/3cb1792e16d0777e9535521c99f0b7b5/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.armeabi-v7a/libfbjni.so",
+        "/Users/macbookairm1/.gradle/caches/9.4.1/transforms/204d584591ab9b6b16b405e00f223bd0/transformed/react-android-0.87.0-release/prefab/modules/jsi/libs/android.armeabi-v7a/libjsi.so",
+        "/Users/macbookairm1/.gradle/caches/9.4.1/transforms/204d584591ab9b6b16b405e00f223bd0/transformed/react-android-0.87.0-release/prefab/modules/reactnative/libs/android.armeabi-v7a/libreactnative.so"
+      ]
+    },
+    "react_codegen_RNCWebViewSpec::@eb48929f9f7453740a6c": {
+      "artifactName": "react_codegen_RNCWebViewSpec",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "appmodules::@6890427a1f51a3e7e1df": {
+      "artifactName": "appmodules",
+      "abi": "armeabi-v7a",
+      "output": "/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/build/intermediates/cxx/RelWithDebInfo/1k4l3i38/obj/armeabi-v7a/libappmodules.so",
+      "runtimeFiles": [
+        "/Users/macbookairm1/Developer/asistente-personal/mobile/android/app/build/intermediates/cxx/RelWithDebInfo/1k4l3i38/obj/armeabi-v7a/libreact_codegen_safeareacontext.so",
+        "/Users/macbookairm1/.gradle/caches/9.4.1/transforms/3cb1792e16d0777e9535521c99f0b7b5/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.armeabi-v7a/libfbjni.so",
+        "/Users/macbookairm1/.gradle/caches/9.4.1/transforms/204d584591ab9b6b16b405e00f223bd0/transformed/react-android-0.87.0-release/prefab/modules/jsi/libs/android.armeabi-v7a/libjsi.so",
+        "/Users/macbookairm1/.gradle/caches/9.4.1/transforms/204d584591ab9b6b16b405e00f223bd0/transformed/react-android-0.87.0-release/prefab/modules/reactnative/libs/android.armeabi-v7a/libreactnative.so"
+      ]
+    }
+  }
+}
