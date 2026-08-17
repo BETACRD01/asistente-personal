@@ -24,7 +24,18 @@ _MAX_ATTEMPTS = 3
 _FALLBACKS = {
     # orden por fiabilidad en el tier gratis de la cuenta (3.1-flash-lite es el mas rapido/estable)
     "gemini": ["gemini-3.1-flash-lite", "gemini-3.6-flash"],
+    # modelos :free de proveedores distintos (cada uno tiene su propio pool de cuota)
+    "openrouter": [
+        "google/gemma-4-26b-a4b-it:free",
+        "nvidia/nemotron-3-nano-9b-v2:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "openai/gpt-oss-20b:free",
+        "cohere/north-mini-code:free",
+    ],
 }
+
+# Ultimo respaldo: la cuenta de Google (OAuth) si el proveedor activo falla
+_OAUTH_FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-flash-latest"]
 
 # Último modelo que respondió (para mostrarlo en el chat)
 last_model: str = ""
@@ -185,21 +196,20 @@ class _FakeResponse:
         self.choices = [_FakeChoice(content, model)]
 
 
-def complete(prompt: str, stream: bool = False):
-    """Genera una respuesta del LLM con reintentos y fallback a otro modelo gratuito."""
-    if _vertex_blocked():
-        logger.warning("vertex_ai bloqueado en modo free_only (billing activo/desconocido)")
-        raise RuntimeError(_REFUSAL)
-
-    use_oauth = settings.llm_provider == "gemini" and oauth.is_logged_in()
-
-    errors: list[str] = []
-    for model in _candidate_models():
-        kwargs = _build_kwargs(prompt, model) if not use_oauth else None
+def _try_candidates(prompt: str, models: list[str], errors: list[str], stream: bool, oauth_ok: bool = False):
+    """Prueba cada modelo; devuelve la respuesta o None si todos fallan."""
+    for model in models:
+        kwargs = _build_kwargs(prompt, model) if not oauth_ok else None
         for attempt in range(1, _MAX_ATTEMPTS + 1):
-            logger.info("llm call provider=%s model=%s intento=%d oauth=%s", settings.llm_provider, model, attempt, use_oauth)
+            logger.info(
+                "llm call provider=%s model=%s intento=%d oauth=%s",
+                settings.llm_provider,
+                model,
+                attempt,
+                oauth_ok,
+            )
             try:
-                if use_oauth:
+                if oauth_ok:
                     return _gemini_oauth_call(prompt, model)
                 global last_model
                 last_model = model
@@ -212,12 +222,41 @@ def complete(prompt: str, stream: bool = False):
                     time.sleep(wait if wait > 0 else attempt)  # espera real o 1s, 2s...
                 else:
                     break  # error no temporal (o agotados los intentos) => siguiente modelo
+    return None
+
+
+def complete(prompt: str, stream: bool = False):
+    """Genera una respuesta del LLM con reintentos, fallback entre modelos y respaldo a la cuenta de Google."""
+    if _vertex_blocked():
+        logger.warning("vertex_ai bloqueado en modo free_only (billing activo/desconocido)")
+        raise RuntimeError(_REFUSAL)
+
+    use_oauth = settings.llm_provider == "gemini" and oauth.is_logged_in()
+
+    errors: list[str] = []
+    resp = _try_candidates(prompt, _candidate_models(), errors, stream, oauth_ok=use_oauth)
+    if resp is not None:
+        return resp
+
+    # Respaldo: si el proveedor activo fallo y hay cuenta de Google iniciada, probar Gemini OAuth
+    if oauth.is_logged_in() and settings.llm_provider != "gemini":
+        logger.warning(
+            "proveedor %s fallo; probando la cuenta de Google como respaldo", settings.llm_provider
+        )
+        resp = _try_candidates(prompt, _OAUTH_FALLBACK_MODELS, errors, stream, oauth_ok=True)
+        if resp is not None:
+            return resp
 
     joined = " | ".join(errors[-4:])
     if any(k in joined for k in ("more credits", "insufficient", "InsufficientBalance", "add funds", "requires more")):
         note = (
             "El modelo elegido es de pago y no hay saldo en esa cuenta. "
             "Elige un modelo ':free' (OpenRouter) o un modelo gratuito."
+        )
+    elif any(k in joined for k in ("rate-limited", "429", "RateLimit", "rate_limit")):
+        note = (
+            "El proveedor gratuito esta saturado (límite de peticiones). "
+            "Se intento con varios modelos gratis y con tu cuenta de Google. Reintenta en unos segundos."
         )
     else:
         note = (
