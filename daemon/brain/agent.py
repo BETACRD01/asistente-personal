@@ -10,22 +10,31 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel
 
 from brain.llm import complete
-from brain.tools import run_applescript, run_bash
+from brain.tools import generate_image, run_applescript, run_bash
 from config import settings
 
 logger = logging.getLogger("daemon.brain")
 
-SYSTEM_PROMPT = """Eres el asistente personal que controla esta Mac.
-Tienes estas herramientas: {tools}
+_ADMIN_NOTE = (
+    "\n- Tienes PERMISOS DE ADMINISTRADOR: puedes ejecutar comandos con 'sudo' "
+    "cuando la tarea lo requiera (macOS pedira la contrasena en pantalla)."
+    if settings.admin_mode
+    else ""
+)
+
+SYSTEM_PROMPT = f"""Eres el asistente personal que controla esta Mac.
+Tienes estas herramientas: {{tools}}
 Devuelve SIEMPRE un JSON valido con una de estas formas EXACTAS:
 {{"tool": "bash", "command": "comando a ejecutar"}}
 {{"tool": "applescript", "script": "script a ejecutar"}}
 {{"tool": "applescript", "script": "...", "jxa": true}}
+{{"tool": "generate_image", "command": "describe la imagen que quieres"}}
 {{"answer": "tu respuesta directa, sin ejecutar nada"}}
 REGLAS:
 - Si el usuario saluda, conversa o pide algo que NO requiere ejecutar un comando, responde directo con {{"answer": "..."}}.
 - Las unicas claves permitidas son: answer, tool, command, script, jxa.
-- No inventes resultados ni herramientas."""
+- No inventes resultados ni herramientas.
+- Si el usuario pide CREAR/DIBUJAR/GENERAR una imagen, usa la herramienta generate_image con una buena descripcion.{_ADMIN_NOTE}"""
 
 
 class AgentState(BaseModel):
@@ -35,6 +44,7 @@ class AgentState(BaseModel):
     jxa: bool = False
     output: str | None = None
     answer: str | None = None
+    model: str | None = None
 
 
 async def _decide(state: AgentState) -> AgentState:
@@ -50,7 +60,10 @@ async def _decide(state: AgentState) -> AgentState:
             )
         )
         try:
+            from brain import llm
+
             raw = complete(prompt).choices[0].message.content
+            state.model = llm.last_model or state.model
         except RuntimeError as exc:
             state.answer = str(exc)
             return state
@@ -72,6 +85,8 @@ async def _execute(state: AgentState) -> AgentState:
                 state.output = await _run_jxa(state.payload or "")
             else:
                 state.output = await run_applescript(state.payload or "")
+        elif state.tool == "generate_image":
+            state.output = await generate_image(state.payload or "")
         else:
             state.answer = "No tengo una herramienta disponible para eso."
     except Exception as exc:
@@ -84,7 +99,14 @@ async def _summarize(state: AgentState) -> AgentState:
     if state.answer:
         return state
     result = state.output or "(sin salida)"
+    if "![imagen](" in result:
+        # la salida ya es una imagen generada: no la resumimos con el LLM
+        state.answer = result
+        return state
+    from brain import llm
+
     summary = complete(f"Resume brevemente en espanol: {result}").choices[0].message.content
+    state.model = llm.last_model or state.model
     state.answer = summary
     return state
 

@@ -350,6 +350,28 @@ body {
   width: fit-content;
 }
 
+.bubble-img {
+  max-width: 320px;
+  max-height: 320px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.bubble-model {
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 8px;
+  align-self: flex-start;
+}
+
+.bubble.user .bubble-model {
+  align-self: flex-end;
+}
+
 .bubble.user {
   margin-left: auto;
   text-align: right;

@@ -4,6 +4,8 @@ export interface ConfigInfo {
   mode: string;
   vertex_blocked: boolean;
   project: string;
+  admin: boolean;
+  workspace: string;
 }
 
 export interface AccountInfo {
@@ -20,6 +22,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   streaming?: boolean;
+  model?: string;
+  image?: string;
 }
 
 export interface ConfigureResponse {
@@ -42,4 +46,8 @@ export type WsMessage = {
   id?: string;
   content?: string;
   message?: string;
+  model?: string;
+  path?: string;
+  mime?: string;
+  data?: string;
 };

@@ -30,12 +30,25 @@ def _validate(cmd: str) -> None:
             raise ToolError(f"Comando bloqueado: contiene {blocked!r}")
 
 
+def _adminize(command: str) -> str:
+    """Con permisos de administrador, 'sudo <cmd>' usa el prompt de macOS."""
+    if not settings.admin_mode:
+        return command
+    stripped = command.lstrip()
+    if not stripped.startswith("sudo "):
+        return command
+    inner = stripped[5:].strip()
+    escaped = inner.replace("\\", "\\\\").replace('"', '\\"')
+    return f'osascript -e \'do shell script "{escaped}" with administrator privileges\''
+
+
 async def run_bash(command: str) -> str:
     """Ejecuta un comando de terminal y devuelve stdout+stderr."""
     _validate(command)
     from projects import get_workspace
 
     cwd = get_workspace()
+    command = _adminize(command)
     proc = await asyncio.create_subprocess_shell(
         command,
         cwd=cwd,

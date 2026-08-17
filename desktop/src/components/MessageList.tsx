@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { ChatMessage } from '../types';
 import { SUGGESTIONS } from '../constants';
+import { isPaidModel, modelLabel } from '../lib/models';
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -34,9 +35,18 @@ export default function MessageList({ messages, busy, onSuggest }: MessageListPr
       {messages.map((m) => (
         <div key={m.id} className={`bubble ${m.role}`}>
           <div className="bubble-text">
-            {m.content}
+            {m.image ? (
+              <img className="bubble-img" src={m.image} alt="imagen generada" />
+            ) : (
+              m.content
+            )}
             {m.streaming && <span className="cursor" />}
           </div>
+          {m.model && m.role === 'assistant' && (
+            <div className="bubble-model">
+              {(isPaidModel(m.model) ? '⚠ ' : '') + modelLabel(m.model)}
+            </div>
+          )}
         </div>
       ))}
       {busy && !streamingNow && (

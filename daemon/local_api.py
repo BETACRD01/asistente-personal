@@ -72,7 +72,23 @@ def config():
         "mode": settings.codex_mode,
         "vertex_blocked": _vertex_blocked(),
         "project": settings.vertex_project,
+        "admin": settings.admin_mode,
+        "workspace": settings.workspace,
     }
+
+
+@app.post("/api/admin")
+def set_admin(body: dict):
+    """Activa/desactiva permisos de administrador (sudo con prompt de macOS)."""
+    import configure as cfg
+
+    enabled = bool(body.get("enabled"))
+    env = cfg.read_env()
+    env["ADMIN_MODE"] = "true" if enabled else "false"
+    cfg.write_env(env)
+    settings.admin_mode = enabled
+    logger.info("permisos de administrador: %s", "activados" if enabled else "desactivados")
+    return {"ok": True, "admin": enabled}
 
 
 @app.get("/api/probe")

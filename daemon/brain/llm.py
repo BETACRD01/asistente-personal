@@ -25,6 +25,9 @@ _FALLBACKS = {
     "gemini": ["gemini-3.6-flash", "gemini-3.1-flash-lite"],
 }
 
+# Último modelo que respondió (para mostrarlo en el chat)
+last_model: str = ""
+
 
 def _vertex_blocked() -> bool:
     """True si Vertex AI no debe usarse en el modo activo."""
@@ -128,22 +131,26 @@ def _gemini_oauth_call(prompt: str, model: str):
         text = data["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError):
         raise RuntimeError(f"Respuesta inesperada: {str(data)[:300]}")
-    return _FakeResponse(text)
+    return _FakeResponse(text, model)
 
 
 class _FakeMessage:
-    def __init__(self, content: str):
+    def __init__(self, content: str, model: str = ""):
         self.content = content
+        self.model = model
 
 
 class _FakeChoice:
-    def __init__(self, content: str):
-        self.message = _FakeMessage(content)
+    def __init__(self, content: str, model: str = ""):
+        self.message = _FakeMessage(content, model)
 
 
 class _FakeResponse:
-    def __init__(self, content: str):
-        self.choices = [_FakeChoice(content)]
+    def __init__(self, content: str, model: str = ""):
+        global last_model
+        if model:
+            last_model = model
+        self.choices = [_FakeChoice(content, model)]
 
 
 def complete(prompt: str, stream: bool = False):
@@ -162,6 +169,8 @@ def complete(prompt: str, stream: bool = False):
             try:
                 if use_oauth:
                     return _gemini_oauth_call(prompt, model)
+                global last_model
+                last_model = model
                 return litellm.completion(**kwargs, stream=stream)
             except Exception as exc:
                 msg = str(exc)

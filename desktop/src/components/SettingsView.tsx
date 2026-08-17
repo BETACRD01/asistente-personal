@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ConfigInfo } from '../types';
-import { configure as apiConfigure } from '../api';
+import { configure as apiConfigure, setAdmin as apiSetAdmin } from '../api';
 import LoginCard from './LoginCard';
 import ProviderGrid from './ProviderGrid';
 import ModelPicker from './ModelPicker';
@@ -17,6 +17,7 @@ export default function SettingsView({ config, models, onConnected, onModelChang
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [busyProvider, setBusyProvider] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
+  const [adminBusy, setAdminBusy] = useState(false);
 
   const connect = async (id: string) => {
     setBusyProvider(id);
@@ -33,6 +34,19 @@ export default function SettingsView({ config, models, onConnected, onModelChang
       setMsg(`⚠ Error de conexión: ${String(e)}`);
     } finally {
       setBusyProvider(null);
+    }
+  };
+
+  const toggleAdmin = async (enabled: boolean) => {
+    setAdminBusy(true);
+    try {
+      const res = await apiSetAdmin(enabled);
+      setMsg(res.ok ? `✓ Permisos de administrador ${enabled ? 'activados' : 'desactivados'}` : `⚠ ${res.error}`);
+      onModelChanged();
+    } catch (e) {
+      setMsg(`⚠ ${String(e)}`);
+    } finally {
+      setAdminBusy(false);
     }
   };
 
@@ -56,6 +70,25 @@ export default function SettingsView({ config, models, onConnected, onModelChang
 
       <h2 className="section-title">Cuenta</h2>
       <LoginCard />
+
+      <h2 className="section-title">Permisos</h2>
+      <div className="card">
+        <div className="billing">
+          Administrador:{' '}
+          <b>{config?.admin ? 'Activado' : 'Desactivado'}</b>
+        </div>
+        <p className="provider-desc">
+          Con permisos de administrador el agente puede ejecutar comandos con <code>sudo</code>.
+          macOS pedirá tu contraseña en pantalla cada vez.
+        </p>
+        <button className="primary" onClick={() => toggleAdmin(!config?.admin)} disabled={adminBusy}>
+          {adminBusy
+            ? 'Guardando…'
+            : config?.admin
+              ? 'Desactivar permisos de administrador'
+              : 'Activar permisos de administrador'}
+        </button>
+      </div>
 
       <h2 className="section-title">Proveedor y API key</h2>
       <ProviderGrid

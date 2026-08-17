@@ -101,6 +101,15 @@ export async function login(): Promise<AccountInfo> {
   return res.json();
 }
 
+export async function setAdmin(enabled: boolean): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/api/admin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  return res.json();
+}
+
 export class DaemonClient {
   private ws: WebSocket | null = null;
   private reconnectTimer: number | null = null;

@@ -49,9 +49,12 @@ class Settings(BaseSettings):
     codex_mode: str = "free_only"
     codex_allow_paid: bool = False
 
-    allowed_tools_raw: str = "bash,applescript"
+    allowed_tools_raw: str = "bash,applescript,generate_image"
     bash_timeout_seconds: int = 30
     max_command_length: int = 4000
+
+    # Permisos de administrador (sudo con prompt de macOS en pantalla)
+    admin_mode: bool = False
 
     # Carpeta de trabajo activa (proyecto seleccionado en la app)
     workspace: str = ""

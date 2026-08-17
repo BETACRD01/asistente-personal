@@ -44,9 +44,26 @@ export default function ChatView({
         });
         break;
       }
+      case 'image': {
+        const id = m.id ?? '';
+        const src = m.data ? `data:${m.mime ?? 'image/png'};base64,${m.data}` : '';
+        setMessages((prev) => [
+          ...prev,
+          { id: `${id}-img`, role: 'assistant', content: '', image: src, streaming: false },
+        ]);
+        break;
+      }
       case 'done':
         setBusy(false);
-        setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, streaming: false } : x)));
+        setMessages((prev) =>
+          prev.map((x) =>
+            x.id === m.id
+              ? { ...x, streaming: false, model: m.model || x.model }
+              : x.id === `${m.id}-img`
+                ? { ...x, streaming: false, model: m.model || x.model }
+                : x,
+          ),
+        );
         break;
       case 'error':
         setBusy(false);
