@@ -28,6 +28,10 @@ STATIC_DIR = Path(__file__).parent / "static"
 mac_term_sockets: dict[str, WebSocket] = {}
 # app_id -> {"ws": WebSocket, "device": str}
 term_app_sockets: dict[str, dict] = {}
+# device_token -> WebSocket (túnel TCP de la Mac, p. ej. SSH)
+mac_tcp_sockets: dict[str, WebSocket] = {}
+# app_id -> {"ws": WebSocket, "device": str}
+tcp_app_sockets: dict[str, dict] = {}
 
 
 @asynccontextmanager
@@ -163,3 +167,107 @@ async def ws_term(websocket: WebSocket, token: str | None = None, device: str | 
         pass
     finally:
         term_app_sockets.pop(app_id, None)
+
+
+# --- Túnel TCP: SSH de la Mac a cualquier red (p. ej. ssh por websocat) ---
+
+
+async def _tcp_control(device: str, message: dict) -> None:
+    mac_ws = mac_tcp_sockets.get(device)
+    if not mac_ws:
+        return
+    try:
+        await mac_ws.send_text(json.dumps(message))
+    except Exception:
+        pass
+
+
+@app.websocket("/ws/mac/tcp")
+async def ws_mac_tcp(websocket: WebSocket, token: str | None = None):
+    auth = websocket.headers.get("authorization")
+    if not token and auth and auth.startswith("Bearer "):
+        token = auth.removeprefix("Bearer ").strip()
+    if not token or not login_device_token(token):
+        await websocket.close(code=4001, reason="invalid device token")
+        return
+
+    mac_tcp_sockets[token] = websocket
+    await websocket.accept()
+    logger.info("tcp Mac conectado device=%s", token)
+    try:
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            raw = message.get("bytes") or message.get("text")
+            if raw is None:
+                continue
+            for info in list(tcp_app_sockets.values()):
+                if info["device"] != token:
+                    continue
+                try:
+                    if message.get("bytes") is not None:
+                        await info["ws"].send_bytes(raw)
+                    else:
+                        await info["ws"].send_text(raw)
+                except Exception:
+                    pass
+    except WebSocketDisconnect:
+        pass
+    finally:
+        mac_tcp_sockets.pop(token, None)
+        logger.info("tcp Mac desconectado device=%s", token)
+
+
+@app.websocket("/ws/tcp")
+async def ws_tcp(websocket: WebSocket, token: str | None = None, device: str | None = None):
+    auth = websocket.headers.get("authorization")
+    if not token and auth and auth.startswith("Bearer "):
+        token = auth.removeprefix("Bearer ").strip()
+    if not token:
+        await websocket.close(code=4001, reason="missing token")
+        return
+    is_app = False
+    try:
+        is_app = decode_token(token).get("sub") == "app"
+    except Exception as exc:
+        logger.warning("ws_tcp decode fallo: %s", exc)
+    if not is_app and not login_device_token(token):
+        await websocket.close(code=4001, reason="invalid token")
+        return
+    if not device or device not in settings.device_tokens:
+        await websocket.close(code=4001, reason="unknown device")
+        return
+    for info in tcp_app_sockets.values():
+        if info["device"] == device:
+            await websocket.close(code=4009, reason="session active")
+            return
+    if device not in mac_tcp_sockets:
+        await websocket.close(code=4004, reason="device offline")
+        return
+
+    app_id = uuid.uuid4().hex
+    tcp_app_sockets[app_id] = {"ws": websocket, "device": device}
+    await websocket.accept()
+    logger.info("tcp app conectado device=%s", device)
+    await _tcp_control(device, {"type": "connect"})
+    try:
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            raw = message.get("bytes") or message.get("text")
+            if raw is None:
+                continue
+            mac_ws = mac_tcp_sockets.get(device)
+            if not mac_ws:
+                break
+            if message.get("bytes") is not None:
+                await mac_ws.send_bytes(raw)
+            else:
+                await mac_ws.send_text(raw)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        tcp_app_sockets.pop(app_id, None)
+        await _tcp_control(device, {"type": "disconnect"})

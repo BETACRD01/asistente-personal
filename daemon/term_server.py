@@ -37,6 +37,8 @@ app = FastAPI(title="Terminal Remoto", version="0.1.0")
 
 PORT = 8766
 HUB_TERM_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/term")
+HUB_TCP_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/tcp")
+TCP_TARGET = ("127.0.0.1", 22)
 
 
 def _set_size(fd: int, cols: int, rows: int) -> None:
@@ -168,6 +170,65 @@ async def hub_bridge() -> None:
             await asyncio.sleep(5)
 
 
+async def _tcp_pump_tcp_to_ws(reader: asyncio.StreamReader, ws: Any) -> None:
+    try:
+        while True:
+            data = await reader.read(65536)
+            if not data:
+                break
+            await ws.send(data)
+    except Exception:
+        pass
+
+
+async def tcp_bridge() -> None:
+    """Puente TCP Mac <-> hub (p. ej. SSH a :22) para acceder desde cualquier red."""
+    headers = {"Authorization": f"Bearer {settings.device_token}"}
+    while True:
+        try:
+            logger.info("tcp: conectando al hub %s", HUB_TCP_URL)
+            async with websockets.connect(
+                HUB_TCP_URL, additional_headers=headers, ping_interval=20
+            ) as ws:
+                logger.info("tcp: conectado al hub")
+                while True:
+                    raw = await ws.recv()
+                    if isinstance(raw, str):
+                        try:
+                            msg = json.loads(raw)
+                        except (ValueError, TypeError):
+                            continue
+                        if msg.get("type") == "connect":
+                            logger.info("tcp: abriendo conexion a %s:%s", *TCP_TARGET)
+                            try:
+                                reader, writer = await asyncio.open_connection(*TCP_TARGET)
+                            except Exception as exc:
+                                logger.warning("tcp: no se pudo conectar a ssh (%s)", exc)
+                                continue
+                            pump_task = asyncio.create_task(_tcp_pump_tcp_to_ws(reader, ws))
+                            try:
+                                async for raw2 in ws:
+                                    if isinstance(raw2, str):
+                                        try:
+                                            msg2 = json.loads(raw2)
+                                            if msg2.get("type") == "disconnect":
+                                                break
+                                        except (ValueError, TypeError):
+                                            continue
+                                        continue
+                                    writer.write(raw2)
+                                    await writer.drain()
+                            finally:
+                                pump_task.cancel()
+                                try:
+                                    writer.close()
+                                except Exception:
+                                    pass
+        except Exception as exc:
+            logger.warning("tcp: conexion hub caida (%s); reintento en 5s", exc)
+            await asyncio.sleep(5)
+
+
 async def main() -> None:
     config = uvicorn.Config(
         app,
@@ -178,7 +239,7 @@ async def main() -> None:
         ws_ping_timeout=None,
     )
     server = uvicorn.Server(config)
-    await asyncio.gather(server.serve(), hub_bridge())
+    await asyncio.gather(server.serve(), hub_bridge(), tcp_bridge())
 
 
 if __name__ == "__main__":
