@@ -138,3 +138,21 @@ def get_email() -> str:
     except Exception as exc:
         logger.warning("no se pudo leer email de sesion: %s", exc)
     return ""
+
+
+def list_models() -> list[str]:
+    """Modelos disponibles para la cuenta logueada (API de Gemini)."""
+    token = get_token()
+    if not token:
+        return []
+    r = requests.get(
+        "https://generativelanguage.googleapis.com/v1beta/models",
+        headers={"Authorization": f"Bearer {token}", "x-goog-user-project": USER_PROJECT},
+        params={"pageSize": 100},
+        timeout=30,
+    )
+    if r.status_code != 200:
+        raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+    names = [m.get("name", "").removeprefix("models/") for m in r.json().get("models", [])]
+    skip = ("embedding", "tts", "robotics", "computer-use", "native-audio", "live-translate", "imagen")
+    return [n for n in names if n.startswith("gemini-") and not any(k in n for k in skip)]

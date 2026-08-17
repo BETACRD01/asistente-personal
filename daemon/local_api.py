@@ -119,6 +119,21 @@ def oauth_status():
     return {"ok": True, "logged": oauth.is_logged_in(), "email": oauth.get_email() if oauth.is_logged_in() else ""}
 
 
+@app.get("/api/models")
+def models():
+    """Modelos disponibles para la sesion actual (los de la cuenta si hay login)."""
+    from brain import oauth
+
+    if oauth.is_logged_in():
+        try:
+            names = oauth.list_models()
+            if names:
+                return {"ok": True, "logged": True, "models": names}
+        except Exception as exc:
+            logger.warning("no se pudieron listar modelos de la cuenta: %s", exc)
+    return {"ok": True, "logged": oauth.is_logged_in(), "models": ["gemini-3.6-flash", "gemini-3.1-flash-lite"]}
+
+
 @app.post("/api/login")
 def login():
     """Inicia sesion con la cuenta de Google: abre el navegador y espera el callback."""

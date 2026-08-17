@@ -7,6 +7,7 @@ import {
   configure as apiConfigure,
   getAccount as apiGetAccount,
   getConfig,
+  getModels as apiGetModels,
   getProjects,
   login as apiLogin,
   setModel as apiSetModel,
@@ -38,11 +39,13 @@ const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.1-flash-lite'];
 
 function SettingsView({
   config,
+  models,
   onConnected,
   onModelChanged,
   onBack,
 }: {
   config: ConfigInfo | null;
+  models: string[];
   onConnected: () => void;
   onModelChanged: () => void;
   onBack: () => void;
@@ -181,7 +184,7 @@ function SettingsView({
           Activo: <b>{config?.model ?? '—'}</b>
         </div>
         <div className="model-list">
-          {FALLBACK_MODELS.map((m) => (
+          {models.map((m) => (
             <button
               key={m}
               className={m === config?.model ? 'model active' : 'model'}
@@ -205,6 +208,7 @@ function ChatView({
   status,
   connected,
   project,
+  models,
   onModelChanged,
 }: {
   config: ConfigInfo | null;
@@ -212,6 +216,7 @@ function ChatView({
   status: string;
   connected: boolean;
   project: string | null;
+  models: string[];
   onModelChanged: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -292,7 +297,10 @@ function ChatView({
           disabled={!connected}
           title="Modelo activo"
         >
-          {FALLBACK_MODELS.map((m) => (
+          {!models.includes(currentModel) && currentModel && (
+            <option value={currentModel}>{currentModel}</option>
+          )}
+          {models.map((m) => (
             <option key={m} value={m}>
               {m}
             </option>
@@ -357,6 +365,7 @@ export default function App() {
   const [projects, setProjects] = useState<string[]>([]);
   const [project, setProject] = useState<string | null>(null);
   const [session, setSession] = useState(0);
+  const [models, setModels] = useState<string[]>(FALLBACK_MODELS);
   const clientRef = useRef<DaemonClient | null>(null);
   if (!clientRef.current) {
     clientRef.current = new DaemonClient((s, c) => {
@@ -370,6 +379,7 @@ export default function App() {
       .then(setConfig)
       .catch(() => setStatus('Daemon no disponible (python main.py)'));
     getProjects().then(setProjects).catch(() => undefined);
+    apiGetModels().then((m) => m.length && setModels(m)).catch(() => undefined);
     clientRef.current?.connect();
     return () => clientRef.current?.disconnect();
   }, []);
@@ -378,6 +388,7 @@ export default function App() {
     getConfig()
       .then(setConfig)
       .catch(() => undefined);
+    apiGetModels().then((m) => m.length && setModels(m)).catch(() => undefined);
   }, []);
 
   return (
@@ -431,11 +442,13 @@ export default function App() {
             status={status}
             connected={connected}
             project={project}
+            models={models}
             onModelChanged={refresh}
           />
         ) : view === 'settings' ? (
           <SettingsView
             config={config}
+            models={models}
             onConnected={() => {
               refresh();
               setView('chat');

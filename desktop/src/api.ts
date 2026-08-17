@@ -78,6 +78,12 @@ export async function getAccount(): Promise<AccountInfo> {
   return res.json();
 }
 
+export async function getModels(): Promise<string[]> {
+  const res = await fetch(`${BASE}/api/models`);
+  const data = await res.json();
+  return data.models ?? [];
+}
+
 export async function login(): Promise<AccountInfo> {
   const res = await fetch(`${BASE}/api/login`, { method: 'POST' });
   return res.json();
