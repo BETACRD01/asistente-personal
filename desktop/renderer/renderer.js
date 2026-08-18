@@ -164,9 +164,6 @@ function connect() {
       setStatus("Terminal nativa abierta", "#4ade80");
     });
   }
-
-  ws.onclose = () => setStatus("desconectado", "#9a9a9a");
-  ws.onerror = () => setStatus("error de conexion", "#f87171");
 }
 
 function disconnect() {
