@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld("api", {
   onStatus: (cb) => ipcRenderer.on("server:status", (_e, msg) => cb(msg)),
   onRequest: (cb) => ipcRenderer.on("server:request", (_e, req) => cb(req)),
   decide: (ok) => ipcRenderer.invoke("server:decide", { ok }),
+  openNative: () => ipcRenderer.invoke("terminal:native"),
 });

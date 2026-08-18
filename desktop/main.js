@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, ipcMain } = require("electron");
 const path = require("path");
+const { exec } = require("child_process");
 const { startServer } = require("./server");
 
 let win = null;
@@ -74,6 +75,18 @@ ipcMain.handle("server:decide", (_e, payload) => {
     decideReq(!!payload?.ok);
     decideReq = null;
   }
+  return true;
+});
+
+ipcMain.handle("terminal:native", () => {
+  if (process.platform !== "darwin") return false;
+  const cmd =
+    'tmux new-session -d -s agent 2>/dev/null; ' +
+    'osascript -e \'tell application "Terminal" to do script "tmux attach -t agent"\'; ' +
+    'osascript -e \'tell application "Terminal" to activate\'';
+  exec(cmd, { shell: "/bin/bash" }, (err) => {
+    if (err) console.error("[terminal:native]", err.message);
+  });
   return true;
 });
 
