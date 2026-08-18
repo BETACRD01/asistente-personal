@@ -220,5 +220,9 @@ devicesSel.addEventListener("change", () => {
 hubInput.value = localStorage.getItem("agentrelay.hub") || "https://agentrelay.duckdns.org";
 deviceInput.value = localStorage.getItem("agentrelay.device") || "";
 sshportInput.value = localStorage.getItem("agentrelay.sshport") || "22";
+serveChk.checked = localStorage.getItem("agentrelay.serve") === "1";
+serveChk.addEventListener("change", () => {
+  localStorage.setItem("agentrelay.serve", serveChk.checked ? "1" : "0");
+});
 
 connect();

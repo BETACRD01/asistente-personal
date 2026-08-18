@@ -3,9 +3,14 @@
 App de escritorio del **terminal remoto de la Mac** (via el hub
 `agentrelay.duckdns.org`). Funciona en **Windows, Linux y macOS**.
 
-La app **incluye el servidor integrado**: al conectar, abre el terminal (PTY) y
-el túnel TCP/SSH hacia el hub desde dentro de la app (no hace falta el daemon de
-Python ni un servicio aparte). En Windows el PTY también funciona (ConPTY).
+La app puede **servir** el terminal/túnel de esta máquina (marcar *Servir esta
+máquina*) o actuar solo como **cliente**: ver el terminal propio o **Buscar
+máquinas** para conectarse al terminal de otra máquina registrada en el hub.
+
+Modo recomendado: el **daemon de Python** (`term_server.py`, servicio
+`com.agentrelay.term`) queda corriendo 24/7 para que el celular entre por
+`ssh mac`; la app se usa como cliente con *Servir esta máquina* **desmarcado**
+(evita competir con el daemon por el mismo token).
 
 ## Requisitos
 
@@ -24,9 +29,9 @@ Pega tu `DEVICE_TOKEN` y pulsa **Conectar**. El token se usa también como
 
 > Si el daemon de Python (`term_server.py`, servicio `com.agentrelay.term`)
 > también está corriendo con el **mismo token**, compite con la app por el hub
-> (gana el último que conecte). Para usar la app como servidor, para el daemon:
-> `launchctl unload ~/Library/LaunchAgents/com.agentrelay.term.plist` (o usa un
-> token distinto por máquina).
+> (gana el último que conecte). Por eso, en modo cliente, deja *Servir esta
+> máquina* desmarcado. Si quieres que la app sea el servidor, para el daemon:
+> `launchctl unload ~/Library/LaunchAgents/com.agentrelay.term.plist`.
 
 ## Acceso
 
