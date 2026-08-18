@@ -38,25 +38,29 @@ function createWindow() {
 
 ipcMain.handle("server:start", (_e, config) => {
   stopServer();
-  server = startServer({
-    hubUrl: config.hubUrl,
-    deviceToken: config.deviceToken,
-    sshPort: config.sshPort || 22,
-    shell: config.shell || "",
-    log: (msg) => {
-      if (win) win.webContents.send("server:status", msg);
-    },
-    onRequest: (frame, decide) => {
-      decideReq = decide;
-      if (win) {
-        win.webContents.send("server:request", {
-          id: frame.id,
-          from: frame.from,
-          kind: frame.kind,
-        });
-      }
-    },
-  });
+  try {
+    server = startServer({
+      hubUrl: config.hubUrl,
+      deviceToken: config.deviceToken,
+      sshPort: config.sshPort || 22,
+      shell: config.shell || "",
+      log: (msg) => {
+        if (win) win.webContents.send("server:status", msg);
+      },
+      onRequest: (frame, decide) => {
+        decideReq = decide;
+        if (win) {
+          win.webContents.send("server:request", {
+            id: frame.id,
+            from: frame.from,
+            kind: frame.kind,
+          });
+        }
+      },
+    });
+  } catch (e) {
+    console.error("[main] server:start fallo:", e);
+  }
   return true;
 });
 

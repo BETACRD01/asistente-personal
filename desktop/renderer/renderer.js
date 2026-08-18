@@ -9,7 +9,6 @@ const statusEl = $("status");
 const srvEl = $("srvstatus");
 const scanBtn = $("scan");
 const devicesSel = $("devices");
-const serveChk = $("serve");
 const codeConnect = $("codeconnect");
 const codeConnectBtn = $("codeconnectbtn");
 const reqModal = $("reqmodal");
@@ -58,13 +57,15 @@ function setSrv(text, color) {
 
 function baseUrl() {
   let hub = hubInput.value.trim().replace(/\/+$/, "");
-  if (!/^wss?:\/\//.test(hub)) hub = "wss://" + hub;
-  return hub;
+  if (/^https:\/\//.test(hub)) return hub.replace(/^https/, "wss");
+  if (/^http:\/\//.test(hub)) return hub.replace(/^http/, "ws");
+  if (/^wss?:\/\//.test(hub)) return hub;
+  return "wss://" + hub;
 }
 
 function saveSettings() {
   localStorage.setItem("agentrelay.hub", hubInput.value.trim());
-  localStorage.setItem("agentrelay.device", deviceInput.value.trim());
+  localStorage.setItem("agentrelay.device2", deviceInput.value.trim());
   localStorage.setItem("agentrelay.sshport", sshportInput.value.trim());
 }
 
@@ -150,12 +151,7 @@ function connect() {
     return;
   }
   saveSettings();
-
-  if (serveChk.checked) {
-    startServer();
-  } else {
-    stopServer();
-  }
+  startServer();
 
   const dev = selectedDevice || token;
 
@@ -267,20 +263,14 @@ if (window.api) {
 }
 
 hubInput.value = localStorage.getItem("agentrelay.hub") || "https://agentrelay.duckdns.org";
-deviceInput.value = localStorage.getItem("agentrelay.device") || "";
+deviceInput.value = localStorage.getItem("agentrelay.device2") || "";
 if (!deviceInput.value) {
   deviceInput.value = genCode();
   saveSettings();
 }
 sshportInput.value = localStorage.getItem("agentrelay.sshport") || "22";
-serveChk.checked = localStorage.getItem("agentrelay.serve2") === "1";
-serveChk.addEventListener("change", () => {
-  localStorage.setItem("agentrelay.serve2", serveChk.checked ? "1" : "0");
-  if (serveChk.checked) startServer();
-  else stopServer();
-});
 deviceInput.addEventListener("input", () => {
-  localStorage.setItem("agentrelay.device", deviceInput.value.trim());
+  localStorage.setItem("agentrelay.device2", deviceInput.value.trim());
 });
 
 connect();
