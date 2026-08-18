@@ -38,3 +38,7 @@ mobile/.metro-health-check*
 
 # Logs
 *.log
+
+# Electron (app de escritorio)
+desktop/node_modules/
+desktop/dist/

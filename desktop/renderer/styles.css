@@ -1,0 +1,58 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #101014;
+  color: #d0d0d0;
+  font-family: system-ui, sans-serif;
+}
+
+#bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+  background: #18181d;
+  border-bottom: 1px solid #2a2a31;
+}
+
+#bar input {
+  flex: 1;
+  min-width: 60px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #0d0d11;
+  color: #eee;
+  font-size: 12px;
+}
+
+#device {
+  flex: 2;
+}
+
+#bar button {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#bar button:hover {
+  background: #1d4ed8;
+}
+
+#status {
+  font-size: 12px;
+  color: #9a9a9a;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+#terminal {
+  height: calc(100% - 47px);
+  padding: 4px 0;
+}
