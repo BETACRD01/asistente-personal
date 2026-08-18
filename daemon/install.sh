@@ -46,6 +46,15 @@ else
 fi
 
 OS="$(uname -s)"
+case "$OS" in
+  MINGW*|MSYS*|CYGWIN*)
+    echo
+    echo "== Windows detectado. En Windows usa el lanzador:"
+    echo "   run_windows.bat   (doble clic o desde cmd)"
+    echo "== (en Windows solo funciona el tunel SSH/SCP/SFTP, no el terminal PTY)"
+    exit 0
+    ;;
+esac
 if [ "$OS" = "Linux" ]; then
   UNIT="$HOME/.config/systemd/user/agentrelay-term.service"
   mkdir -p "$(dirname "$UNIT")"
