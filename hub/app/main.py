@@ -21,6 +21,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -76,6 +77,14 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Asistente Hub", version="0.2.0", lifespan=lifespan)
 
+# La app de escritorio (Electron, origen file://) hace fetch a /devices
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class LoginRequest(BaseModel):
     token: str
@@ -130,30 +139,8 @@ async def login_device(payload: LoginRequest):
 
 
 async def _request_access(device: str, kind: str, from_token: str) -> bool:
-    """Pide permiso a la máquina remota para conectar (flujo tipo AnyDesk).
-
-    Si la máquina no tiene canal de peticiones, se acepta directo (compat).
-    """
-    req_ws = mac_req_sockets.get(device)
-    if not req_ws:
-        return True
-    req_id = uuid.uuid4().hex
-    ev = asyncio.Event()
-    pending[req_id] = {"event": ev, "ok": False}
-    try:
-        await req_ws.send_text(
-            json.dumps({"type": "conn_req", "id": req_id, "kind": kind, "from": from_token})
-        )
-        try:
-            await asyncio.wait_for(ev.wait(), timeout=45)
-        except asyncio.TimeoutError:
-            logger.warning("peticion %s sin respuesta de %s (%s)", req_id, device, kind)
-            return False
-        return bool(pending.get(req_id, {}).get("ok"))
-    except Exception:
-        return False
-    finally:
-        pending.pop(req_id, None)
+    """Conexion directa (sin pedir aceptacion a la maquina remota)."""
+    return True
 
 
 @app.websocket("/ws/mac/req")
