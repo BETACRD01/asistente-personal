@@ -238,5 +238,3 @@ sshportInput.value = localStorage.getItem("agentrelay.sshport") || "22";
 deviceInput.addEventListener("input", () => {
   localStorage.setItem("agentrelay.device2", deviceInput.value.trim());
 });
-
-connect();
