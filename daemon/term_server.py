@@ -25,6 +25,7 @@ import os
 import struct
 import subprocess
 import sys
+import time
 from typing import Any, Awaitable, Callable
 
 import uvicorn
@@ -240,6 +241,7 @@ async def hub_bridge() -> None:
         return
     headers = {"Authorization": f"Bearer {settings.device_token}"}
     while True:
+        _hb("term")
         try:
             logger.info("terminal: conectando al hub %s", HUB_TERM_URL)
             async with websockets.connect(
@@ -296,6 +298,7 @@ async def tcp_bridge() -> None:
     """Puente TCP Mac <-> hub (p. ej. SSH a :22); varias conexiones por conn_id."""
     headers = {"Authorization": f"Bearer {settings.device_token}"}
     while True:
+        _hb("tcp")
         try:
             logger.info("tcp: conectando al hub %s", HUB_TCP_URL)
             async with websockets.connect(
@@ -356,6 +359,7 @@ async def req_bridge() -> None:
     """Canal de peticiones del hub: auto-acepta conexiones (daemon sin interfaz)."""
     headers = {"Authorization": f"Bearer {settings.device_token}"}
     while True:
+        _hb("req")
         try:
             logger.info("peticiones: conectando al hub %s", HUB_REQ_URL)
             async with websockets.connect(
@@ -403,6 +407,28 @@ def _clear_port(port: int) -> None:
             os.kill(int(pid), 9)
 
 
+# latidos por puente (para el supervisor: detecta puentes colgados)
+BRIDGE_HB: dict[str, float] = {"tcp": 0.0, "req": 0.0}
+if HAS_PTY:
+    BRIDGE_HB["term"] = 0.0
+
+
+def _hb(name: str) -> None:
+    BRIDGE_HB[name] = time.monotonic()
+
+
+async def _supervisor() -> None:
+    """Si un puente no marca actividad en 90s, reinicia el proceso (launchd lo revive).
+    Evita quedar offline para siempre cuando el hub se reinicia y el daemon no reconecta."""
+    while True:
+        await asyncio.sleep(30)
+        now = time.monotonic()
+        for name, last in list(BRIDGE_HB.items()):
+            if now - last > 90:
+                logger.error("puente %s sin actividad (%ss); reinicio forzado", name, int(now - last))
+                os._exit(1)
+
+
 async def main() -> None:
     _clear_port(PORT)
     config = uvicorn.Config(
@@ -414,7 +440,7 @@ async def main() -> None:
         ws_ping_timeout=None,
     )
     server = uvicorn.Server(config)
-    tasks: list[Awaitable[None]] = [server.serve(), tcp_bridge(), req_bridge()]
+    tasks: list[Awaitable[None]] = [server.serve(), tcp_bridge(), req_bridge(), _supervisor()]
     if HAS_PTY:
         tasks.append(hub_bridge())
     await asyncio.gather(*tasks)
