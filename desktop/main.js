@@ -79,22 +79,40 @@ ipcMain.handle("server:decide", (_e, payload) => {
 });
 
 ipcMain.handle("terminal:open", (_e, { hub, token, device, isLocal }) => {
-  if (process.platform !== "darwin") return false;
   let cmd = "";
-  if (isLocal) {
-    cmd =
-      'tmux new-session -d -s agent 2>/dev/null; ' +
-      'osascript -e \'tell application "Terminal" to do script "tmux attach -t agent"\'; ' +
-      'osascript -e \'tell application "Terminal" to activate\'';
-  } else {
-    const cliPath = require("path").join(__dirname, "server", "cli.js");
-    cmd =
-      `osascript -e 'tell application "Terminal" to do script "env ELECTRON_RUN_AS_NODE=1 \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\""'; ` +
-      `osascript -e 'tell application "Terminal" to activate'`;
+  const cliPath = require("path").join(__dirname, "server", "cli.js");
+  
+  if (process.platform === "darwin") {
+    if (isLocal) {
+      cmd =
+        'tmux new-session -d -s agent 2>/dev/null; ' +
+        'osascript -e \'tell application "Terminal" to do script "tmux attach -t agent"\'; ' +
+        'osascript -e \'tell application "Terminal" to activate\'';
+    } else {
+      cmd =
+        `osascript -e 'tell application "Terminal" to do script "env ELECTRON_RUN_AS_NODE=1 \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\""'; ` +
+        `osascript -e 'tell application "Terminal" to activate'`;
+    }
+  } else if (process.platform === "win32") {
+    if (isLocal) {
+      cmd = `start cmd.exe`;
+    } else {
+      cmd = `start cmd.exe /c "set ELECTRON_RUN_AS_NODE=1 && \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\""`;
+    }
+  } else if (process.platform === "linux") {
+    if (isLocal) {
+      cmd = `x-terminal-emulator -e "bash -c 'tmux attach -t agent || tmux new -s agent'" || gnome-terminal -- bash -c "tmux attach -t agent || tmux new -s agent"`;
+    } else {
+      const runCmd = `env ELECTRON_RUN_AS_NODE=1 \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\"`;
+      cmd = `x-terminal-emulator -e "bash -c '${runCmd}'" || gnome-terminal -- bash -c "${runCmd}"`;
+    }
   }
-  exec(cmd, { shell: "/bin/bash" }, (err) => {
-    if (err) console.error("[terminal:open]", err.message);
-  });
+  
+  if (cmd) {
+    exec(cmd, { shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash" }, (err) => {
+      if (err) console.error("[terminal:open]", err.message);
+    });
+  }
   return true;
 });
 
