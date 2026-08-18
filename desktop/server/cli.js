@@ -39,7 +39,7 @@ process.stdin.on('data', d => {
 });
 
 ws.on('message', (data, isBinary) => {
-  if (isBinary || data instanceof Buffer) {
+  if (isBinary) {
     if (!established) {
       step("Conexión establecida", GREEN, "✓");
       established = true;
