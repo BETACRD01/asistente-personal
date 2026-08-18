@@ -58,9 +58,12 @@ if IS_POSIX:
         def __init__(self) -> None:
             self._master, slave = pty.openpty()
             shell = os.environ.get("SHELL", "/bin/zsh" if sys.platform == "darwin" else "/bin/bash")
+            cmd = [shell]
+            if os.path.basename(shell) in ("zsh", "bash"):
+                cmd.append("-l")
             env = {**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor"}
             self._proc = subprocess.Popen(
-                [shell],
+                cmd,
                 stdin=slave,
                 stdout=slave,
                 stderr=slave,

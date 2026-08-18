@@ -1,5 +1,6 @@
 const WebSocket = require("ws");
 const os = require("os");
+const path = require("path");
 const { spawn } = require("node-pty");
 
 function startTerminal({ hubUrl, deviceToken, shell, log }) {
@@ -12,7 +13,8 @@ function startTerminal({ hubUrl, deviceToken, shell, log }) {
       shell ||
       process.env.SHELL ||
       (process.platform === "win32" ? "powershell.exe" : "/bin/bash");
-    pty = spawn(sh, [], {
+    const args = ["zsh", "bash"].includes(path.basename(sh)) ? ["-l"] : [];
+    pty = spawn(sh, args, {
       cols: 80,
       rows: 24,
       cwd: os.homedir(),
