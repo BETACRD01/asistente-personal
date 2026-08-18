@@ -1,6 +1,7 @@
 const WebSocket = require("ws");
 const os = require("os");
 const path = require("path");
+const { execSync } = require("child_process");
 const { spawn } = require("node-pty");
 
 function startTerminal({ hubUrl, deviceToken, shell, log }) {
@@ -8,13 +9,29 @@ function startTerminal({ hubUrl, deviceToken, shell, log }) {
   const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${deviceToken}` } });
   let pty = null;
 
+  function hasTmux() {
+    try {
+      execSync("which tmux", { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function openPty() {
     const sh =
       shell ||
       process.env.SHELL ||
       (process.platform === "win32" ? "powershell.exe" : "/bin/bash");
-    const args = ["zsh", "bash"].includes(path.basename(sh)) ? ["-l"] : [];
-    pty = spawn(sh, args, {
+    let cmd = sh;
+    let args;
+    if (process.platform !== "win32" && hasTmux()) {
+      cmd = "tmux";
+      args = ["new-session", "-A", "-s", "agent"];
+    } else {
+      args = ["zsh", "bash"].includes(path.basename(sh)) ? ["-l"] : [];
+    }
+    pty = spawn(cmd, args, {
       cols: 80,
       rows: 24,
       cwd: os.homedir(),

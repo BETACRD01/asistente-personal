@@ -22,6 +22,7 @@ import base64
 import json
 import logging
 import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -58,9 +59,13 @@ if IS_POSIX:
         def __init__(self) -> None:
             self._master, slave = pty.openpty()
             shell = os.environ.get("SHELL", "/bin/zsh" if sys.platform == "darwin" else "/bin/bash")
-            cmd = [shell]
-            if os.path.basename(shell) in ("zsh", "bash"):
-                cmd.append("-l")
+            tmux = shutil.which("tmux")
+            if tmux:
+                cmd = [tmux, "new-session", "-A", "-s", "agent"]
+            else:
+                cmd = [shell]
+                if os.path.basename(shell) in ("zsh", "bash"):
+                    cmd.append("-l")
             env = {**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor"}
             self._proc = subprocess.Popen(
                 cmd,
