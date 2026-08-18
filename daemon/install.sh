@@ -51,7 +51,7 @@ case "$OS" in
     echo
     echo "== Windows detectado. En Windows usa el lanzador:"
     echo "   run_windows.bat   (doble clic o desde cmd)"
-    echo "== (en Windows solo funciona el tunel SSH/SCP/SFTP, no el terminal PTY)"
+    echo "== (ahora con soporte PTY instalando pywinpty en requirements.txt)"
     exit 0
     ;;
 esac

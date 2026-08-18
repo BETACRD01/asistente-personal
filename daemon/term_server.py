@@ -1,7 +1,7 @@
-"""Terminal remoto de la Mac: PTY real expuesto por WebSocket.
+"""Terminal remoto de la Mac/PC: PTY real expuesto por WebSocket.
 
 Sirve para conectarse desde el movil y ejecutar comandos (y los agentes
-de IA configurados en la shell) directamente en el terminal de la Mac.
+de IA configurados en la shell) directamente en el terminal.
 
 Dos vias de acceso:
   - local  : ws://<IP>:8766/term?token=TERM_TOKEN   (misma red Wi-Fi)
@@ -10,8 +10,7 @@ Dos vias de acceso:
 
 Sistemas:
   - POSIX (Linux/macOS): terminal PTY + tunel TCP (SSH/SCP/SFTP).
-  - Windows: solo el tunel TCP (SSH/SCP/SFTP); el PTY no existe en Windows,
-    asi que el terminal remoto queda desactivado.
+  - Windows: terminal interactivo (pywinpty) + tunel TCP (SSH/SCP/SFTP).
 
 Protocolo (frames):
   - binarios: datos del terminal (salida de la shell / input del usuario)
@@ -25,6 +24,7 @@ import logging
 import os
 import struct
 import subprocess
+import sys
 from typing import Any, Awaitable, Callable
 
 import uvicorn
@@ -34,24 +34,16 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from config import settings
 
 IS_POSIX = os.name == "posix"
+IS_WINDOWS = os.name == "nt"
+
+HAS_PTY = False
+TerminalSessionClass = None
 
 if IS_POSIX:
     import fcntl
     import pty
     import termios
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
-logger = logging.getLogger("daemon.term")
-
-app = FastAPI(title="Terminal Remoto", version="0.1.0")
-
-PORT = 8766
-HUB_TERM_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/term")
-HUB_TCP_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/tcp")
-TCP_TARGET = ("127.0.0.1", 22)
-
-
-if IS_POSIX:
+    HAS_PTY = True
 
     def _set_size(fd: int, cols: int, rows: int) -> None:
         try:
@@ -59,12 +51,12 @@ if IS_POSIX:
         except OSError:
             pass
 
-    class TerminalSession:
+    class PosixTerminalSession:
         """Una sesion de shell real (PTY) enlazada a un WebSocket."""
 
         def __init__(self) -> None:
             self._master, slave = pty.openpty()
-            shell = os.environ.get("SHELL", "/bin/zsh")
+            shell = os.environ.get("SHELL", "/bin/zsh" if sys.platform == "darwin" else "/bin/bash")
             env = {**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor"}
             self._proc = subprocess.Popen(
                 [shell],
@@ -123,60 +115,135 @@ if IS_POSIX:
             except OSError:
                 pass
 
-    @app.websocket("/term")
-    async def term(websocket: WebSocket, token: str = ""):
-        if not settings.term_token or token != settings.term_token:
-            await websocket.close(code=4001, reason="bad token")
-            return
+    TerminalSessionClass = PosixTerminalSession
 
-        await websocket.accept()
-        logger.info("terminal local conectado")
+elif IS_WINDOWS:
+    try:
+        from winpty import PtyProcess
+        HAS_PTY = True
 
-        session = TerminalSession()
-        send_task = asyncio.create_task(session.pump(websocket.send_bytes))
-        try:
-            while True:
-                message = await websocket.receive()
-                if message["type"] == "websocket.disconnect":
-                    break
-                raw = message.get("bytes") or message.get("text")
-                if raw is None:
-                    continue
-                await session.handle(raw, message.get("text") is not None)
-        except WebSocketDisconnect:
-            pass
-        finally:
-            send_task.cancel()
-            session.close()
-            logger.info("terminal local desconectado")
+        class WindowsTerminalSession:
+            def __init__(self) -> None:
+                shell = os.environ.get("COMSPEC", "cmd.exe")
+                self._proc = PtyProcess.spawn(shell)
 
-    async def hub_bridge() -> None:
-        """Mantiene viva la conexion con el hub para el terminal (acceso desde cualquier red)."""
-        headers = {"Authorization": f"Bearer {settings.device_token}"}
-        while True:
-            try:
-                logger.info("terminal: conectando al hub %s", HUB_TERM_URL)
-                async with websockets.connect(
-                    HUB_TERM_URL, additional_headers=headers, ping_interval=20
-                ) as ws:
-                    logger.info("terminal: conectado al hub")
-                    session = TerminalSession()
-                    send_task = asyncio.create_task(session.pump(ws.send))
+            async def pump(self, send: Callable[[bytes], Awaitable[None]]) -> None:
+                loop = asyncio.get_event_loop()
+                while True:
                     try:
-                        async for raw in ws:
-                            is_text = isinstance(raw, str)
-                            await session.handle(raw, is_text)
-                    finally:
-                        send_task.cancel()
-                        session.close()
-            except Exception as exc:
-                logger.warning("terminal: conexion hub caida (%s); reintento en 5s", exc)
-                await asyncio.sleep(5)
+                        data = await loop.run_in_executor(None, lambda: self._proc.read(4096))
+                    except Exception:
+                        return
+                    if not data:
+                        return
+                    try:
+                        if isinstance(data, str):
+                            data = data.encode("utf-8")
+                        await send(data)
+                    except Exception:
+                        return
+
+            async def handle(self, raw: Any, is_text: bool) -> None:
+                if is_text:
+                    try:
+                        control = json.loads(raw)
+                        if control.get("type") == "resize":
+                            self._proc.set_size(
+                                int(control.get("cols", 80)),
+                                int(control.get("rows", 24)),
+                            )
+                    except (ValueError, TypeError):
+                        pass
+                    return
+                try:
+                    if isinstance(raw, bytes):
+                        raw = raw.decode("utf-8", errors="replace")
+                    self._proc.write(raw)
+                except Exception:
+                    pass
+
+            def close(self) -> None:
+                try:
+                    self._proc.close()
+                except Exception:
+                    pass
+
+        TerminalSessionClass = WindowsTerminalSession
+    except ImportError:
+        pass
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logger = logging.getLogger("daemon.term")
+if not HAS_PTY:
+    logger.warning("Soporte PTY no disponible en este sistema.")
+
+app = FastAPI(title="Terminal Remoto", version="0.1.0")
+
+PORT = 8766
+HUB_TERM_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/term")
+HUB_TCP_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/tcp")
+TCP_TARGET = ("127.0.0.1", 22)
+
+
+@app.websocket("/term")
+async def term(websocket: WebSocket, token: str = ""):
+    if not HAS_PTY or not TerminalSessionClass:
+        await websocket.close(code=1011, reason="PTY no soportado")
+        return
+    if not settings.term_token or token != settings.term_token:
+        await websocket.close(code=4001, reason="bad token")
+        return
+
+    await websocket.accept()
+    logger.info("terminal local conectado")
+
+    session = TerminalSessionClass()
+    send_task = asyncio.create_task(session.pump(websocket.send_bytes))
+    try:
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            raw = message.get("bytes") or message.get("text")
+            if raw is None:
+                continue
+            await session.handle(raw, message.get("text") is not None)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        send_task.cancel()
+        session.close()
+        logger.info("terminal local desconectado")
+
+async def hub_bridge() -> None:
+    """Mantiene viva la conexion con el hub para el terminal (acceso desde cualquier red)."""
+    if not HAS_PTY or not TerminalSessionClass:
+        return
+    headers = {"Authorization": f"Bearer {settings.device_token}"}
+    while True:
+        try:
+            logger.info("terminal: conectando al hub %s", HUB_TERM_URL)
+            async with websockets.connect(
+                HUB_TERM_URL, additional_headers=headers, ping_interval=20
+            ) as ws:
+                logger.info("terminal: conectado al hub")
+                session = TerminalSessionClass()
+                send_task = asyncio.create_task(session.pump(ws.send))
+                try:
+                    async for raw in ws:
+                        is_text = isinstance(raw, str)
+                        await session.handle(raw, is_text)
+                finally:
+                    send_task.cancel()
+                    session.close()
+        except Exception as exc:
+            logger.warning("terminal: conexion hub caida (%s); reintento en 5s", exc)
+            await asyncio.sleep(5)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "terminal": IS_POSIX, "tunnel": True}
+    return {"status": "ok", "terminal": HAS_PTY, "tunnel": True}
 
 
 async def _tcp_pump_tcp_to_ws(
@@ -269,7 +336,7 @@ async def main() -> None:
     )
     server = uvicorn.Server(config)
     tasks: list[Awaitable[None]] = [server.serve(), tcp_bridge()]
-    if IS_POSIX:
+    if HAS_PTY:
         tasks.append(hub_bridge())
     await asyncio.gather(*tasks)
 

@@ -34,6 +34,6 @@ if not exist .env (
   echo [4/4] .env ya existe (no lo toco)
 )
 
-echo Arrancando term_server.py (en Windows: solo tunel SSH/SCP/SFTP)...
+echo Arrancando term_server.py (en Windows: PTY interactivo y tunel soportados)...
 python term_server.py
 pause
