@@ -1,6 +1,5 @@
 const $ = (id) => document.getElementById(id);
 
-const myCodeEl = $("mycode");
 const hubInput = $("hub");
 const deviceInput = $("device");
 const sshportInput = $("sshport");
@@ -36,11 +35,6 @@ function genCode() {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-}
-
-function updateMyCode() {
-  myCodeEl.textContent = deviceInput.value || "—";
-  myCodeEl.title = "Código de esta máquina (tu DEVICE_TOKEN)";
 }
 
 copyCode.addEventListener("click", () => {
@@ -285,7 +279,8 @@ serveChk.addEventListener("change", () => {
   if (serveChk.checked) startServer();
   else stopServer();
 });
-deviceInput.addEventListener("input", updateMyCode);
-updateMyCode();
+deviceInput.addEventListener("input", () => {
+  localStorage.setItem("agentrelay.device", deviceInput.value.trim());
+});
 
 connect();

@@ -113,14 +113,20 @@ body {
   padding: 4px 4px 4px 10px;
 }
 
-.codebox code {
+.codebox .code-input {
   flex: 1;
+  border: 0;
+  background: transparent;
+  color: #fbbf24;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
-  color: #fbbf24;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  outline: none;
+  padding: 4px 0;
+}
+
+.codebox .code-input:focus {
+  box-shadow: none;
+  border: 0;
 }
 
 .codebox button {
@@ -131,11 +137,7 @@ body {
   font-size: 11px;
   padding: 5px 9px;
   cursor: pointer;
-}
-
-.codebox button:hover {
-  background: #273349;
-  color: #fff;
+  white-space: nowrap;
 }
 
 .hrow button {
