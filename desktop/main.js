@@ -3,13 +3,18 @@ const path = require("path");
 const { exec } = require("child_process");
 const { startServer } = require("./server");
 const fs = require("fs");
+const os = require("os");
 
-const logFile = "/tmp/agentrelay.log";
-fs.writeFileSync(logFile, "App started\n");
+const logFile = path.join(os.tmpdir(), "agentrelay.log");
+try {
+  fs.writeFileSync(logFile, "App started\n");
+} catch (e) {
+  console.error("[log] no se pudo abrir " + logFile, e.message);
+}
 const origErr = console.error;
 const origLog = console.log;
-console.error = (...args) => { fs.appendFileSync(logFile, args.join(" ") + "\n"); origErr(...args); };
-console.log = (...args) => { fs.appendFileSync(logFile, args.join(" ") + "\n"); origLog(...args); };
+console.error = (...args) => { try { fs.appendFileSync(logFile, args.join(" ") + "\n"); } catch {} origErr(...args); };
+console.log = (...args) => { try { fs.appendFileSync(logFile, args.join(" ") + "\n"); } catch {} origLog(...args); };
 
 let win = null;
 let server = null;
