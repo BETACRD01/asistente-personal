@@ -1,10 +1,18 @@
-"""Hub de Asistente Personal: relé de terminal de la Mac (en memoria).
+"""Hub de Asistente Personal: relé de terminal y túnel con control de acceso.
+
+Cada máquina se auto-registra al conectar (su token = su identidad). Para
+conectarse a una máquina, el cliente pide acceso y la máquina remota lo
+acepta/niega a través de su canal de peticiones (/ws/mac/req).
 
 Endpoints WS:
-  /ws/mac/term (device token) -> el daemon de la Mac publica/recibe bytes del PTY
-  /ws/term     (JWT app o device token) -> el cliente (Termux/app) envía/recoje bytes
+  /ws/mac/term (device token) -> la máquina publica/recibe bytes del PTY
+  /ws/mac/tcp  (device token) -> túnel TCP de la máquina (SSH/SCP/SFTP)
+  /ws/mac/req  (device token) -> canal de peticiones (conn_req / conn_ok)
+  /ws/term     -> el cliente pide el terminal de una máquina
+  /ws/tcp      -> el cliente pide un túnel TCP a una máquina
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -25,14 +33,40 @@ logger = logging.getLogger("hub")
 STATIC_DIR = Path(__file__).parent / "static"
 
 # registros en memoria
-# device_token -> WebSocket (PTY de la Mac)
+# device_token -> WebSocket (PTY de la máquina)
 mac_term_sockets: dict[str, WebSocket] = {}
+# device_token -> WebSocket (túnel TCP de la máquina, p. ej. SSH)
+mac_tcp_sockets: dict[str, WebSocket] = {}
+# device_token -> WebSocket (canal de peticiones / aceptación)
+mac_req_sockets: dict[str, WebSocket] = {}
 # app_id -> {"ws": WebSocket, "device": str}
 term_app_sockets: dict[str, dict] = {}
-# device_token -> WebSocket (túnel TCP de la Mac, p. ej. SSH)
-mac_tcp_sockets: dict[str, WebSocket] = {}
-# app_id -> {"ws": WebSocket, "device": str}
+# conn_id -> {"ws": WebSocket, "device": str}
 tcp_app_sockets: dict[str, dict] = {}
+# req_id -> {"event": asyncio.Event, "ok": bool}
+pending: dict[str, dict] = {}
+
+# máquinas conocidas: semilla de DEVICE_TOKENS + auto-registradas
+known_devices: set[str] = set(settings.device_tokens)
+
+MIN_TOKEN_LEN = 12
+
+
+def _register(token: str | None) -> bool:
+    """Auto-registra una máquina. Su token es su identidad en el hub."""
+    if not token or len(token) < MIN_TOKEN_LEN:
+        return False
+    known_devices.add(token)
+    return True
+
+
+def _is_known(device: str) -> bool:
+    return device in known_devices
+
+
+def _identity_ok(token: str | None, is_app: bool) -> bool:
+    """Identidad de un cliente: app (JWT) o cualquier token de máquina valido."""
+    return is_app or (token is not None and len(token) >= MIN_TOKEN_LEN)
 
 
 @asynccontextmanager
@@ -62,7 +96,7 @@ async def devices(token: str | None = None):
         is_app = decode_token(token).get("sub") == "app"
     except Exception:
         pass
-    if not is_app and not login_device_token(token):
+    if not _identity_ok(token, is_app):
         raise HTTPException(status_code=401, detail="invalid token")
     return {
         "devices": [
@@ -71,7 +105,7 @@ async def devices(token: str | None = None):
                 "terminal": dev in mac_term_sockets,
                 "tunnel": dev in mac_tcp_sockets,
             }
-            for dev in settings.device_tokens
+            for dev in sorted(known_devices)
         ]
     }
 
@@ -95,6 +129,71 @@ async def login_device(payload: LoginRequest):
     return {"token": create_token(payload.token, ttl_hours=720)}
 
 
+async def _request_access(device: str, kind: str, from_token: str) -> bool:
+    """Pide permiso a la máquina remota para conectar (flujo tipo AnyDesk).
+
+    Si la máquina no tiene canal de peticiones, se acepta directo (compat).
+    """
+    req_ws = mac_req_sockets.get(device)
+    if not req_ws:
+        return True
+    req_id = uuid.uuid4().hex
+    ev = asyncio.Event()
+    pending[req_id] = {"event": ev, "ok": False}
+    try:
+        await req_ws.send_text(
+            json.dumps({"type": "conn_req", "id": req_id, "kind": kind, "from": from_token})
+        )
+        try:
+            await asyncio.wait_for(ev.wait(), timeout=45)
+        except asyncio.TimeoutError:
+            logger.warning("peticion %s sin respuesta de %s (%s)", req_id, device, kind)
+            return False
+        return bool(pending.get(req_id, {}).get("ok"))
+    except Exception:
+        return False
+    finally:
+        pending.pop(req_id, None)
+
+
+@app.websocket("/ws/mac/req")
+async def ws_mac_req(websocket: WebSocket, token: str | None = None):
+    """Canal de peticiones de una máquina: recibe conn_req y responde conn_ok."""
+    auth = websocket.headers.get("authorization")
+    if not token and auth and auth.startswith("Bearer "):
+        token = auth.removeprefix("Bearer ").strip()
+    if not token or not (_register(token) or login_device_token(token)):
+        await websocket.close(code=4001, reason="invalid device token")
+        return
+
+    mac_req_sockets[token] = websocket
+    await websocket.accept()
+    logger.info("peticiones Mac conectado device=%s", token)
+    try:
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            raw = message.get("bytes") or message.get("text")
+            if not isinstance(raw, str):
+                continue
+            try:
+                frame = json.loads(raw)
+            except ValueError:
+                continue
+            if frame.get("type") != "conn_ok":
+                continue
+            pend = pending.get(frame.get("id"))
+            if pend:
+                pend["ok"] = bool(frame.get("ok"))
+                pend["event"].set()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        mac_req_sockets.pop(token, None)
+        logger.info("peticiones Mac desconectado device=%s", token)
+
+
 async def _term_status(device: str, state: str) -> None:
     msg = json.dumps({"type": "status", "state": state})
     for info in list(term_app_sockets.values()):
@@ -110,7 +209,7 @@ async def ws_mac_term(websocket: WebSocket, token: str | None = None):
     auth = websocket.headers.get("authorization")
     if not token and auth and auth.startswith("Bearer "):
         token = auth.removeprefix("Bearer ").strip()
-    if not token or not login_device_token(token):
+    if not token or not (_register(token) or login_device_token(token)):
         await websocket.close(code=4001, reason="invalid device token")
         return
 
@@ -157,10 +256,10 @@ async def ws_term(websocket: WebSocket, token: str | None = None, device: str | 
         is_app = decode_token(token).get("sub") == "app"
     except Exception as exc:
         logger.warning("ws_term decode fallo: %s", exc)
-    if not is_app and not login_device_token(token):
+    if not _identity_ok(token, is_app):
         await websocket.close(code=4001, reason="invalid token")
         return
-    if not device or device not in settings.device_tokens:
+    if not device or not _is_known(device):
         await websocket.close(code=4001, reason="unknown device")
         return
 
@@ -169,6 +268,9 @@ async def ws_term(websocket: WebSocket, token: str | None = None, device: str | 
     await websocket.accept()
     logger.info("terminal app conectado device=%s", device)
     if device in mac_term_sockets:
+        if not await _request_access(device, "term", token):
+            await websocket.close(code=4005, reason="rejected")
+            return
         await _term_status(device, "connected")
     else:
         await _term_status(device, "offline")
@@ -214,7 +316,7 @@ async def ws_mac_tcp(websocket: WebSocket, token: str | None = None):
     auth = websocket.headers.get("authorization")
     if not token and auth and auth.startswith("Bearer "):
         token = auth.removeprefix("Bearer ").strip()
-    if not token or not login_device_token(token):
+    if not token or not (_register(token) or login_device_token(token)):
         await websocket.close(code=4001, reason="invalid device token")
         return
 
@@ -271,14 +373,17 @@ async def ws_tcp(websocket: WebSocket, token: str | None = None, device: str | N
         is_app = decode_token(token).get("sub") == "app"
     except Exception as exc:
         logger.warning("ws_tcp decode fallo: %s", exc)
-    if not is_app and not login_device_token(token):
+    if not _identity_ok(token, is_app):
         await websocket.close(code=4001, reason="invalid token")
         return
-    if not device or device not in settings.device_tokens:
+    if not device or not _is_known(device):
         await websocket.close(code=4001, reason="unknown device")
         return
     if device not in mac_tcp_sockets:
         await websocket.close(code=4004, reason="device offline")
+        return
+    if not await _request_access(device, "tcp", token):
+        await websocket.close(code=4005, reason="rejected")
         return
 
     conn_id = uuid.uuid4().hex

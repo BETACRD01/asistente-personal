@@ -118,7 +118,92 @@ body {
   white-space: nowrap;
 }
 
+#mycode {
+  font-size: 11px;
+  color: #fbbf24;
+  background: #1a1a20;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 5px 8px;
+  white-space: nowrap;
+  font-family: ui-monospace, monospace;
+}
+
+#devbar input {
+  flex: 1;
+  max-width: 240px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  border: 1px solid #333;
+  background: #0d0d11;
+  color: #eee;
+  font-size: 11px;
+}
+
 #terminal {
   height: calc(100% - 70px);
   padding: 4px 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#reqmodal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.reqbox {
+  background: #18181d;
+  border: 1px solid #2a2a31;
+  border-radius: 10px;
+  padding: 18px 22px;
+  width: 320px;
+  text-align: center;
+}
+
+.reqtitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #fbbf24;
+}
+
+.reqinfo {
+  font-size: 12px;
+  color: #c5c5c5;
+  margin: 0 0 14px;
+}
+
+.reqbox button {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin: 0 5px;
+}
+
+#reqok {
+  background: #16a34a;
+  color: #fff;
+}
+
+#reqok:hover {
+  background: #15803d;
+}
+
+#reqno {
+  background: #dc2626;
+  color: #fff;
+}
+
+#reqno:hover {
+  background: #b91c1c;
 }

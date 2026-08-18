@@ -9,6 +9,7 @@
 </head>
 <body>
   <div id="bar">
+    <span id="mycode" title="Código de esta máquina">código: —</span>
     <input id="hub" placeholder="https://agentrelay.duckdns.org" />
     <input id="device" placeholder="DEVICE_TOKEN" />
     <input id="sshport" placeholder="SSH:22" title="Puerto SSH local" />
@@ -24,9 +25,20 @@
     <select id="devices">
       <option value="">(elegir máquina)</option>
     </select>
+    <input id="codeconnect" placeholder="código de otra máquina" />
+    <button id="codeconnectbtn">Conectar a código</button>
     <label><input type="checkbox" id="serve" /> Servir esta máquina</label>
   </div>
   <div id="terminal"></div>
+
+  <div id="reqmodal" class="hidden">
+    <div class="reqbox">
+      <p class="reqtitle">¿Permitir conexión?</p>
+      <p class="reqinfo">La máquina <b id="reqfrom">—</b> quiere acceder al terminal (tipo: <span id="reqkind">—</span>).</p>
+      <button id="reqok">Permitir</button>
+      <button id="reqno">Rechazar</button>
+    </div>
+  </div>
 
   <script src="../node_modules/xterm/lib/xterm.js"></script>
   <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>

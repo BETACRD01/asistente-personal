@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
+const myCodeEl = $("mycode");
 const hubInput = $("hub");
 const deviceInput = $("device");
 const sshportInput = $("sshport");
@@ -10,12 +11,36 @@ const srvEl = $("srvstatus");
 const scanBtn = $("scan");
 const devicesSel = $("devices");
 const serveChk = $("serve");
+const codeConnect = $("codeconnect");
+const codeConnectBtn = $("codeconnectbtn");
+const reqModal = $("reqmodal");
+const reqFrom = $("reqfrom");
+const reqKind = $("reqkind");
+const reqOk = $("reqok");
+const reqNo = $("reqno");
 
 let ws = null;
 let term = null;
 let fitAddon = null;
 let serverOn = false;
 let selectedDevice = "";
+
+function shortTok(t) {
+  return (t || "").length > 16 ? "…" + (t || "").slice(-10) : t || "—";
+}
+
+function genCode() {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function updateMyCode() {
+  myCodeEl.textContent = "código: " + shortTok(deviceInput.value);
+  myCodeEl.title = "Código de esta máquina (tu DEVICE_TOKEN)";
+}
 
 function setStatus(text, color) {
   statusEl.textContent = text;
@@ -37,10 +62,6 @@ function saveSettings() {
   localStorage.setItem("agentrelay.hub", hubInput.value.trim());
   localStorage.setItem("agentrelay.device", deviceInput.value.trim());
   localStorage.setItem("agentrelay.sshport", sshportInput.value.trim());
-}
-
-function shortTok(t) {
-  return t.length > 12 ? "…" + t.slice(-12) : t;
 }
 
 function sendResize() {
@@ -216,13 +237,43 @@ devicesSel.addEventListener("change", () => {
   selectedDevice = devicesSel.value || "";
   setStatus("máquina elegida: " + (selectedDevice ? shortTok(selectedDevice) : "esta máquina"), "#fbbf24");
 });
+codeConnectBtn.addEventListener("click", () => {
+  const code = codeConnect.value.trim();
+  if (!code) return;
+  selectedDevice = code;
+  devicesSel.value = "";
+  setStatus("conectando a código " + shortTok(code) + "…", "#fbbf24");
+  connect();
+});
+
+reqOk.addEventListener("click", () => {
+  if (window.api) window.api.decide(true);
+  reqModal.classList.add("hidden");
+});
+reqNo.addEventListener("click", () => {
+  if (window.api) window.api.decide(false);
+  reqModal.classList.add("hidden");
+});
+
+if (window.api) {
+  window.api.onRequest((req) => {
+    reqFrom.textContent = shortTok(req.from) + " (" + req.kind + ")";
+    reqModal.classList.remove("hidden");
+  });
+}
 
 hubInput.value = localStorage.getItem("agentrelay.hub") || "https://agentrelay.duckdns.org";
 deviceInput.value = localStorage.getItem("agentrelay.device") || "";
+if (!deviceInput.value) {
+  deviceInput.value = genCode();
+  saveSettings();
+}
 sshportInput.value = localStorage.getItem("agentrelay.sshport") || "22";
 serveChk.checked = localStorage.getItem("agentrelay.serve") === "1";
 serveChk.addEventListener("change", () => {
   localStorage.setItem("agentrelay.serve", serveChk.checked ? "1" : "0");
 });
+deviceInput.addEventListener("input", updateMyCode);
+updateMyCode();
 
 connect();

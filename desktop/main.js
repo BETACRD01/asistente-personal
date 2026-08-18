@@ -4,8 +4,10 @@ const { startServer } = require("./server");
 
 let win = null;
 let server = null;
+let decideReq = null;
 
 function stopServer() {
+  decideReq = null;
   if (server) {
     try {
       server.stop();
@@ -44,12 +46,30 @@ ipcMain.handle("server:start", (_e, config) => {
     log: (msg) => {
       if (win) win.webContents.send("server:status", msg);
     },
+    onRequest: (frame, decide) => {
+      decideReq = decide;
+      if (win) {
+        win.webContents.send("server:request", {
+          id: frame.id,
+          from: frame.from,
+          kind: frame.kind,
+        });
+      }
+    },
   });
   return true;
 });
 
 ipcMain.handle("server:stop", () => {
   stopServer();
+  return true;
+});
+
+ipcMain.handle("server:decide", (_e, payload) => {
+  if (decideReq) {
+    decideReq(!!payload?.ok);
+    decideReq = null;
+  }
   return true;
 });
 

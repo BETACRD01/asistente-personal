@@ -200,6 +200,7 @@ app = FastAPI(title="Terminal Remoto", version="0.1.0")
 PORT = 8766
 HUB_TERM_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/term")
 HUB_TCP_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/tcp")
+HUB_REQ_URL = settings.hub_ws_url.replace("/ws/mac", "/ws/mac/req")
 TCP_TARGET = ("127.0.0.1", 22)
 
 
@@ -351,6 +352,43 @@ async def tcp_bridge() -> None:
             await asyncio.sleep(5)
 
 
+async def req_bridge() -> None:
+    """Canal de peticiones del hub: auto-acepta conexiones (daemon sin interfaz)."""
+    headers = {"Authorization": f"Bearer {settings.device_token}"}
+    while True:
+        try:
+            logger.info("peticiones: conectando al hub %s", HUB_REQ_URL)
+            async with websockets.connect(
+                HUB_REQ_URL, additional_headers=headers, ping_interval=20
+            ) as ws:
+                logger.info("peticiones: canal listo (auto-acepta)")
+                stop = asyncio.Event()
+                watchdog = asyncio.create_task(_watchdog(ws, stop))
+                try:
+                    async for raw in ws:
+                        if not isinstance(raw, str):
+                            continue
+                        try:
+                            frame = json.loads(raw)
+                        except (ValueError, TypeError):
+                            continue
+                        if frame.get("type") == "conn_req":
+                            logger.info(
+                                "peticiones: auto-aceptar %s de %s",
+                                frame.get("kind"),
+                                frame.get("from"),
+                            )
+                            await ws.send(
+                                json.dumps({"type": "conn_ok", "id": frame.get("id"), "ok": True})
+                            )
+                finally:
+                    stop.set()
+                    watchdog.cancel()
+        except Exception as exc:
+            logger.warning("peticiones: conexion hub caida (%s); reintento en 5s", exc)
+            await asyncio.sleep(5)
+
+
 async def main() -> None:
     config = uvicorn.Config(
         app,
@@ -361,7 +399,7 @@ async def main() -> None:
         ws_ping_timeout=None,
     )
     server = uvicorn.Server(config)
-    tasks: list[Awaitable[None]] = [server.serve(), tcp_bridge()]
+    tasks: list[Awaitable[None]] = [server.serve(), tcp_bridge(), req_bridge()]
     if HAS_PTY:
         tasks.append(hub_bridge())
     await asyncio.gather(*tasks)
