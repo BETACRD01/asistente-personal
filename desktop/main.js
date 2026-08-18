@@ -79,37 +79,46 @@ ipcMain.handle("server:decide", (_e, payload) => {
 });
 
 ipcMain.handle("terminal:open", (_e, { hub, token, device, isLocal }) => {
-  let cmd = "";
-  const cliPath = require("path").join(__dirname, "server", "cli.js");
+  const os = require("os");
+  const fs = require("fs");
+  const path = require("path");
+  const cliPath = path.join(__dirname, "server", "cli.js");
+  const id = Date.now();
   
   if (process.platform === "darwin") {
+    const tmpScript = path.join(os.tmpdir(), `agentrelay_${id}.sh`);
+    let scriptContent = "#!/bin/bash\n";
     if (isLocal) {
-      cmd =
-        'tmux new-session -d -s agent 2>/dev/null; ' +
-        'osascript -e \'tell application "Terminal" to do script "tmux attach -t agent"\'; ' +
-        'osascript -e \'tell application "Terminal" to activate\'';
+      scriptContent += `tmux attach -t agent || tmux new -s agent\n`;
     } else {
-      cmd =
-        `osascript -e 'tell application "Terminal" to do script "env ELECTRON_RUN_AS_NODE=1 \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\""'; ` +
-        `osascript -e 'tell application "Terminal" to activate'`;
+      scriptContent += `env ELECTRON_RUN_AS_NODE=1 "${process.execPath}" "${cliPath}" "${hub}" "${token}" "${device}"\n`;
     }
+    fs.writeFileSync(tmpScript, scriptContent, { mode: 0o755 });
+    exec(`open -a Terminal "${tmpScript}"`, (err) => {
+      if (err) console.error("[terminal:open]", err.message);
+    });
   } else if (process.platform === "win32") {
+    const tmpScript = path.join(os.tmpdir(), `agentrelay_${id}.bat`);
+    let scriptContent = "@echo off\n";
     if (isLocal) {
-      cmd = `start cmd.exe`;
+      scriptContent += `cmd.exe\n`;
     } else {
-      cmd = `start cmd.exe /c "set ELECTRON_RUN_AS_NODE=1 && \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\""`;
+      scriptContent += `set ELECTRON_RUN_AS_NODE=1\n"${process.execPath}" "${cliPath}" "${hub}" "${token}" "${device}"\n`;
     }
+    fs.writeFileSync(tmpScript, scriptContent);
+    exec(`start cmd.exe /c "${tmpScript}"`, (err) => {
+      if (err) console.error("[terminal:open]", err.message);
+    });
   } else if (process.platform === "linux") {
+    const tmpScript = path.join(os.tmpdir(), `agentrelay_${id}.sh`);
+    let scriptContent = "#!/bin/bash\n";
     if (isLocal) {
-      cmd = `x-terminal-emulator -e "bash -c 'tmux attach -t agent || tmux new -s agent'" || gnome-terminal -- bash -c "tmux attach -t agent || tmux new -s agent"`;
+      scriptContent += `tmux attach -t agent || tmux new -s agent\n`;
     } else {
-      const runCmd = `env ELECTRON_RUN_AS_NODE=1 \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\"`;
-      cmd = `x-terminal-emulator -e "bash -c '${runCmd}'" || gnome-terminal -- bash -c "${runCmd}"`;
+      scriptContent += `env ELECTRON_RUN_AS_NODE=1 "${process.execPath}" "${cliPath}" "${hub}" "${token}" "${device}"\n`;
     }
-  }
-  
-  if (cmd) {
-    exec(cmd, { shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash" }, (err) => {
+    fs.writeFileSync(tmpScript, scriptContent, { mode: 0o755 });
+    exec(`x-terminal-emulator -e "${tmpScript}" || gnome-terminal -- "${tmpScript}"`, (err) => {
       if (err) console.error("[terminal:open]", err.message);
     });
   }
