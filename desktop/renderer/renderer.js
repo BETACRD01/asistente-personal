@@ -2,17 +2,25 @@ const $ = (id) => document.getElementById(id);
 
 const hubInput = $("hub");
 const deviceInput = $("device");
+const sshportInput = $("sshport");
 const connectBtn = $("connect");
 const reconnectBtn = $("reconnect");
 const statusEl = $("status");
+const srvEl = $("srvstatus");
 
 let ws = null;
 let term = null;
 let fitAddon = null;
+let serverOn = false;
 
 function setStatus(text, color) {
   statusEl.textContent = text;
   statusEl.style.color = color || "#9a9a9a";
+}
+
+function setSrv(text, color) {
+  srvEl.textContent = text;
+  srvEl.style.color = color || "#9a9a9a";
 }
 
 function baseUrl() {
@@ -24,12 +32,46 @@ function baseUrl() {
 function saveSettings() {
   localStorage.setItem("agentrelay.hub", hubInput.value.trim());
   localStorage.setItem("agentrelay.device", deviceInput.value.trim());
+  localStorage.setItem("agentrelay.sshport", sshportInput.value.trim());
 }
 
 function sendResize() {
   if (ws && ws.readyState === WebSocket.OPEN && term) {
     ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
   }
+}
+
+function startServer() {
+  const hub = baseUrl();
+  const token = deviceInput.value.trim();
+  if (!token || !window.api) return;
+  window.api
+    .start({ hubUrl: hub, deviceToken: token, sshPort: Number(sshportInput.value) || 22 })
+    .then(() => {
+      serverOn = true;
+      setSrv("servidor: conectando...", "#fbbf24");
+    });
+}
+
+function stopServer() {
+  if (window.api) {
+    window.api.stop().then(() => {
+      serverOn = false;
+      setSrv("servidor: parado");
+    });
+  }
+}
+
+if (window.api) {
+  window.api.onStatus((msg) => {
+    if (msg.includes("conectado al hub")) {
+      setSrv(msg.startsWith("tunel") ? "servidor: tunel + terminal activos" : "servidor: " + msg, "#4ade80");
+    } else if (msg.includes("error") || msg.includes("salio")) {
+      setSrv("servidor: " + msg, "#f87171");
+    } else {
+      setSrv("servidor: " + msg);
+    }
+  });
 }
 
 function connect() {
@@ -42,6 +84,7 @@ function connect() {
     return;
   }
   saveSettings();
+  startServer();
 
   const url = `${hub}/ws/term?token=${encodeURIComponent(token)}&device=${encodeURIComponent(token)}`;
 
@@ -123,5 +166,6 @@ reconnectBtn.addEventListener("click", connect);
 
 hubInput.value = localStorage.getItem("agentrelay.hub") || "https://agentrelay.duckdns.org";
 deviceInput.value = localStorage.getItem("agentrelay.device") || "";
+sshportInput.value = localStorage.getItem("agentrelay.sshport") || "22";
 
 connect();

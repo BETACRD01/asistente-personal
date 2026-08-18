@@ -18,7 +18,7 @@ body {
 
 #bar input {
   flex: 1;
-  min-width: 60px;
+  min-width: 50px;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid #333;
@@ -29,6 +29,10 @@ body {
 
 #device {
   flex: 2;
+}
+
+#sshport {
+  flex: 0 0 70px;
 }
 
 #bar button {
@@ -52,7 +56,25 @@ body {
   white-space: nowrap;
 }
 
+#srvbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  background: #141419;
+  border-bottom: 1px solid #2a2a31;
+  font-size: 11px;
+  color: #9a9a9a;
+  min-height: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#srvstatus {
+  font-weight: 600;
+}
+
 #terminal {
-  height: calc(100% - 47px);
+  height: calc(100% - 70px);
   padding: 4px 0;
 }

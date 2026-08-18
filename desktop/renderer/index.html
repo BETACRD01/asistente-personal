@@ -11,9 +11,13 @@
   <div id="bar">
     <input id="hub" placeholder="https://agentrelay.duckdns.org" />
     <input id="device" placeholder="DEVICE_TOKEN" />
+    <input id="sshport" placeholder="SSH:22" title="Puerto SSH local" />
     <button id="connect">Conectar</button>
     <button id="reconnect" title="Reconectar">↻</button>
     <span id="status">desconectado</span>
+  </div>
+  <div id="srvbar">
+    <span id="srvstatus">servidor: parado</span>
   </div>
   <div id="terminal"></div>
 
