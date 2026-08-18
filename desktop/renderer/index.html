@@ -3,38 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AgentRelay — Terminal de la Mac</title>
+  <title>AgentRelay — Terminal remoto</title>
   <link rel="stylesheet" href="../node_modules/xterm/css/xterm.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="bar">
-    <span id="mycode" title="Código de esta máquina">código: —</span>
-    <input id="hub" placeholder="https://agentrelay.duckdns.org" />
-    <input id="device" placeholder="DEVICE_TOKEN" />
-    <input id="sshport" placeholder="SSH:22" title="Puerto SSH local" />
-    <button id="connect">Conectar</button>
-    <button id="reconnect" title="Reconectar">↻</button>
-    <span id="status">desconectado</span>
-  </div>
-  <div id="srvbar">
-    <span id="srvstatus">servidor: parado</span>
-  </div>
-  <div id="devbar">
-    <button id="scan" title="Listar maquinas conectadas al hub">Buscar máquinas</button>
-    <select id="devices">
-      <option value="">(elegir máquina)</option>
-    </select>
-    <input id="codeconnect" placeholder="código de otra máquina" />
-    <button id="codeconnectbtn">Conectar a código</button>
-    <label><input type="checkbox" id="serve" /> Servir esta máquina</label>
-  </div>
+  <header id="topbar">
+    <span class="logo">◉ AgentRelay</span>
+    <span id="status" class="pill">desconectado</span>
+  </header>
+
+  <section id="panels">
+    <div class="panel">
+      <h3 class="ptitle">Esta máquina</h3>
+      <div class="row">
+        <label>Código de esta máquina</label>
+        <div class="codebox">
+          <code id="mycode">—</code>
+          <button id="copycode" title="Copiar código">copiar</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Device token</label>
+        <input id="device" placeholder="tu DEVICE_TOKEN" spellcheck="false" />
+      </div>
+      <div class="row">
+        <label>Puerto SSH local</label>
+        <input id="sshport" placeholder="22" spellcheck="false" />
+      </div>
+      <div class="row row-between">
+        <label class="chk"><input type="checkbox" id="serve" /> Servir esta máquina</label>
+        <span id="srvstatus" class="mini">parado</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3 class="ptitle">Conectar</h3>
+      <div class="row">
+        <label>Hub</label>
+        <input id="hub" placeholder="https://agentrelay.duckdns.org" spellcheck="false" />
+      </div>
+      <div class="row">
+        <button id="scan">Buscar máquinas</button>
+        <select id="devices">
+          <option value="">(elegir máquina)</option>
+        </select>
+      </div>
+      <div class="row">
+        <input id="codeconnect" placeholder="código de otra máquina" spellcheck="false" />
+        <button id="codeconnectbtn">Conectar a código</button>
+      </div>
+      <div class="row row-actions">
+        <button id="connect" class="primary">Conectar</button>
+        <button id="reconnect" title="Reconectar">↻</button>
+      </div>
+    </div>
+  </section>
+
   <div id="terminal"></div>
 
   <div id="reqmodal" class="hidden">
     <div class="reqbox">
       <p class="reqtitle">¿Permitir conexión?</p>
-      <p class="reqinfo">La máquina <b id="reqfrom">—</b> quiere acceder al terminal (tipo: <span id="reqkind">—</span>).</p>
+      <p class="reqinfo">La máquina <b id="reqfrom">—</b> quiere acceder a esta máquina.</p>
       <button id="reqok">Permitir</button>
       <button id="reqno">Rechazar</button>
     </div>

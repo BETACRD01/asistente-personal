@@ -2,147 +2,193 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: #101014;
-  color: #d0d0d0;
-  font-family: system-ui, sans-serif;
+  overflow: hidden;
+  background: linear-gradient(160deg, #0f1117 0%, #141a26 60%, #0f1117 100%);
+  color: #d7dce4;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
-#bar {
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(20, 24, 34, 0.9);
+  border-bottom: 1px solid #232b3a;
+  flex: 0 0 auto;
+}
+
+.logo {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #7dd3fc;
+}
+
+.pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #1c2433;
+  color: #8b95a7;
+  border: 1px solid #2a3448;
+}
+
+#panels {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.panel {
+  flex: 1 1 320px;
+  min-width: 300px;
+  background: rgba(19, 23, 33, 0.85);
+  border: 1px solid #232b3a;
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.ptitle {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8ca0bd;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.row-between {
+  justify-content: space-between;
+}
+
+.row label {
+  flex: 0 0 150px;
+  font-size: 11px;
+  color: #8b95a7;
+}
+
+.row input,
+.row select {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #2a3448;
+  background: #0c1018;
+  color: #e8edf4;
+  font-size: 12px;
+  outline: none;
+}
+
+.row input:focus,
+.row select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.codebox {
+  flex: 1;
   display: flex;
   gap: 6px;
   align-items: center;
-  padding: 8px;
-  background: #18181d;
-  border-bottom: 1px solid #2a2a31;
+  background: #0c1018;
+  border: 1px solid #2a3448;
+  border-radius: 8px;
+  padding: 4px 4px 4px 10px;
 }
 
-#bar input {
+.codebox code {
   flex: 1;
-  min-width: 50px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid #333;
-  background: #0d0d11;
-  color: #eee;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
+  color: #fbbf24;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-#device {
-  flex: 2;
-}
-
-#sshport {
-  flex: 0 0 70px;
-}
-
-#bar button {
-  padding: 6px 12px;
+.codebox button {
   border: 0;
   border-radius: 6px;
-  background: #2563eb;
-  color: #fff;
+  background: #1c2433;
+  color: #aab6c8;
+  font-size: 11px;
+  padding: 5px 9px;
   cursor: pointer;
-  font-size: 12px;
 }
 
-#bar button:hover {
+.codebox button:hover {
+  background: #273349;
+  color: #fff;
+}
+
+.row button {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #232f45;
+  color: #dfe7f1;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.row button:hover {
+  background: #2e3d59;
+}
+
+.row button.primary {
+  background: #2563eb;
+  color: #fff;
+  flex: 1;
+}
+
+.row button.primary:hover {
   background: #1d4ed8;
 }
 
-#status {
-  font-size: 12px;
-  color: #9a9a9a;
-  margin-left: auto;
-  white-space: nowrap;
+.row-actions {
+  margin-bottom: 0;
 }
 
-#srvbar {
+.chk {
   display: flex;
-  gap: 8px;
   align-items: center;
-  padding: 4px 8px;
-  background: #141419;
-  border-bottom: 1px solid #2a2a31;
-  font-size: 11px;
-  color: #9a9a9a;
-  min-height: 22px;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-#srvstatus {
-  font-weight: 600;
-}
-
-#devbar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 8px;
-  background: #121217;
-  border-bottom: 1px solid #2a2a31;
-  font-size: 11px;
-  color: #9a9a9a;
-  min-height: 24px;
-}
-
-#devbar button {
-  padding: 3px 10px;
-  border: 0;
-  border-radius: 5px;
-  background: #334155;
-  color: #fff;
+  gap: 7px;
+  font-size: 12px !important;
+  color: #c7d0dd !important;
   cursor: pointer;
+  user-select: none;
+}
+
+.mini {
   font-size: 11px;
-}
-
-#devbar button:hover {
-  background: #475569;
-}
-
-#devbar select {
-  flex: 1;
-  padding: 3px 6px;
-  border-radius: 5px;
-  border: 1px solid #333;
-  background: #0d0d11;
-  color: #eee;
-  font-size: 11px;
-  max-width: 320px;
-}
-
-#devbar label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-#mycode {
-  font-size: 11px;
-  color: #fbbf24;
-  background: #1a1a20;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 5px 8px;
-  white-space: nowrap;
-  font-family: ui-monospace, monospace;
-}
-
-#devbar input {
-  flex: 1;
-  max-width: 240px;
-  padding: 3px 6px;
-  border-radius: 5px;
-  border: 1px solid #333;
-  background: #0d0d11;
-  color: #eee;
-  font-size: 11px;
+  color: #8b95a7;
 }
 
 #terminal {
-  height: calc(100% - 70px);
-  padding: 4px 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 16px 14px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0a0d14;
+  border: 1px solid #232b3a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .hidden {
@@ -152,7 +198,8 @@ body {
 #reqmodal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(5, 8, 14, 0.72);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -160,34 +207,36 @@ body {
 }
 
 .reqbox {
-  background: #18181d;
-  border: 1px solid #2a2a31;
-  border-radius: 10px;
-  padding: 18px 22px;
-  width: 320px;
+  background: #151b28;
+  border: 1px solid #2c3850;
+  border-radius: 14px;
+  padding: 22px 26px;
+  width: 340px;
   text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
 .reqtitle {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   margin: 0 0 8px;
   color: #fbbf24;
 }
 
 .reqinfo {
-  font-size: 12px;
-  color: #c5c5c5;
-  margin: 0 0 14px;
+  font-size: 13px;
+  color: #c3ccd9;
+  margin: 0 0 16px;
 }
 
 .reqbox button {
-  padding: 7px 16px;
+  padding: 9px 20px;
   border: 0;
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  margin: 0 5px;
+  margin: 0 6px;
 }
 
 #reqok {

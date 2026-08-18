@@ -18,6 +18,7 @@ const reqFrom = $("reqfrom");
 const reqKind = $("reqkind");
 const reqOk = $("reqok");
 const reqNo = $("reqno");
+const copyCode = $("copycode");
 
 let ws = null;
 let term = null;
@@ -38,9 +39,18 @@ function genCode() {
 }
 
 function updateMyCode() {
-  myCodeEl.textContent = "código: " + shortTok(deviceInput.value);
+  myCodeEl.textContent = deviceInput.value || "—";
   myCodeEl.title = "Código de esta máquina (tu DEVICE_TOKEN)";
 }
+
+copyCode.addEventListener("click", () => {
+  const code = deviceInput.value.trim();
+  if (!code) return;
+  navigator.clipboard.writeText(code).then(() => {
+    copyCode.textContent = "✓ copiado";
+    setTimeout(() => (copyCode.textContent = "copiar"), 1200);
+  });
+});
 
 function setStatus(text, color) {
   statusEl.textContent = text;
@@ -257,7 +267,7 @@ reqNo.addEventListener("click", () => {
 
 if (window.api) {
   window.api.onRequest((req) => {
-    reqFrom.textContent = shortTok(req.from) + " (" + req.kind + ")";
+    reqFrom.textContent = shortTok(req.from);
     reqModal.classList.remove("hidden");
   });
 }
@@ -269,9 +279,11 @@ if (!deviceInput.value) {
   saveSettings();
 }
 sshportInput.value = localStorage.getItem("agentrelay.sshport") || "22";
-serveChk.checked = localStorage.getItem("agentrelay.serve") === "1";
+serveChk.checked = localStorage.getItem("agentrelay.serve2") === "1";
 serveChk.addEventListener("change", () => {
-  localStorage.setItem("agentrelay.serve", serveChk.checked ? "1" : "0");
+  localStorage.setItem("agentrelay.serve2", serveChk.checked ? "1" : "0");
+  if (serveChk.checked) startServer();
+  else stopServer();
 });
 deviceInput.addEventListener("input", updateMyCode);
 updateMyCode();
