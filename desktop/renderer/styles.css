@@ -197,6 +197,7 @@ body {
   background: #0a0d14;
   border: 1px solid #232b3a;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: none;
 }
 
 .hidden {

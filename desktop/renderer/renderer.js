@@ -157,10 +157,13 @@ function connect() {
 
   // Conectar a ESTA máquina -> abrir la Terminal nativa (tmux), no la de la app
   if (dev === token && window.api) {
+    $("terminal").style.display = "none";
     setStatus("abriendo la Terminal nativa de la Mac…", "#fbbf24");
     window.api.openNative().then(() => setStatus("Terminal nativa abierta", "#4ade80"));
     return;
   }
+
+  $("terminal").style.display = "block";
 
   const url = `${hub}/ws/term?token=${encodeURIComponent(token)}&device=${encodeURIComponent(dev)}`;
 
