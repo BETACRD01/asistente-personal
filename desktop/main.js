@@ -2,6 +2,14 @@ const { app, BrowserWindow, Menu, ipcMain } = require("electron");
 const path = require("path");
 const { exec } = require("child_process");
 const { startServer } = require("./server");
+const fs = require("fs");
+
+const logFile = "/tmp/agentrelay.log";
+fs.writeFileSync(logFile, "App started\n");
+const origErr = console.error;
+const origLog = console.log;
+console.error = (...args) => { fs.appendFileSync(logFile, args.join(" ") + "\n"); origErr(...args); };
+console.log = (...args) => { fs.appendFileSync(logFile, args.join(" ") + "\n"); origLog(...args); };
 
 let win = null;
 let server = null;
@@ -79,6 +87,7 @@ ipcMain.handle("server:decide", (_e, payload) => {
 });
 
 ipcMain.handle("terminal:open", (_e, { hub, token, device, isLocal }) => {
+  console.log(`[terminal:open] called with isLocal=${isLocal}, device=${device}`);
   const os = require("os");
   const fs = require("fs");
   const path = require("path");
@@ -94,6 +103,7 @@ ipcMain.handle("terminal:open", (_e, { hub, token, device, isLocal }) => {
       scriptContent += `env ELECTRON_RUN_AS_NODE=1 "${process.execPath}" "${cliPath}" "${hub}" "${token}" "${device}"\n`;
     }
     fs.writeFileSync(tmpScript, scriptContent, { mode: 0o755 });
+    console.log(`[terminal:open] Executing: open -a Terminal "${tmpScript}"`);
     exec(`open -a Terminal "${tmpScript}"`, (err) => {
       if (err) console.error("[terminal:open]", err.message);
     });

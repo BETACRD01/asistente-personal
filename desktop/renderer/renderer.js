@@ -158,7 +158,6 @@ function connect() {
   const isLocal = dev === token;
 
   if (window.api) {
-    $("terminal").style.display = "none";
     setStatus(isLocal ? "abriendo Terminal nativa (esta máquina)…" : "abriendo Terminal nativa (otra máquina)…", "#fbbf24");
     window.api.openNative({ hub, token, device: dev, isLocal }).then(() => {
       setStatus("Terminal nativa abierta", "#4ade80");
