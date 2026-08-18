@@ -6,13 +6,25 @@ if (!hub || !token || !device) {
   process.exit(1);
 }
 
+const isTTY = process.stdout.isTTY;
+const C = (code) => (isTTY ? `\x1b[${code}m` : "");
+const GREEN = C("32"), YELLOW = C("33"), RED = C("31"), DIM = C("2"), BOLD = C("1"), RESET = C("0");
+
+function step(text, color, mark) {
+  console.log(`${color}${mark} ${text}${RESET}`);
+}
+
+console.log(`${DIM}user@server:~$${RESET} conectar ${device}`);
+step(`Conectando a ${device}...`, YELLOW, "●");
+
 const url = `${hub}/ws/term?token=${encodeURIComponent(token)}&device=${encodeURIComponent(device)}`;
 const ws = new WebSocket(url);
 
+let established = false;
+
 ws.on('open', () => {
-  console.log(`Conectado al hub: ${hub}`);
-  console.log(`Conectando a la máquina: ${device}...`);
-  if (process.stdout.isTTY) {
+  step("Autenticando...", GREEN, "●");
+  if (isTTY) {
     ws.send(JSON.stringify({ type: 'resize', cols: process.stdout.columns, rows: process.stdout.rows }));
   }
 });
@@ -28,16 +40,23 @@ process.stdin.on('data', d => {
 
 ws.on('message', (data, isBinary) => {
   if (isBinary || data instanceof Buffer) {
+    if (!established) {
+      step("Conexión establecida", GREEN, "✓");
+      established = true;
+    }
     process.stdout.write(data);
   } else {
     try {
       const msg = JSON.parse(data.toString());
       if (msg.type === 'status') {
         if (msg.state === 'offline') {
-          console.log('\r\n[La máquina destino está offline]\r\n');
+          step("La máquina destino está offline", RED, "✕");
           process.exit(1);
         } else if (msg.state === 'connected') {
-          // Ya estamos conectados
+          if (!established) {
+            step("Conexión establecida", GREEN, "✓");
+            established = true;
+          }
         }
       }
     } catch {
@@ -47,16 +66,16 @@ ws.on('message', (data, isBinary) => {
 });
 
 ws.on('close', () => {
-  console.log('\r\n[Conexión cerrada]\r\n');
+  console.log(`${DIM}[Conexión cerrada]${RESET}`);
   process.exit(0);
 });
 
 ws.on('error', (err) => {
-  console.log(`\r\n[Error de conexión: ${err.message}]\r\n`);
+  step(`Error de conexión: ${err.message}`, RED, "✕");
   process.exit(1);
 });
 
-if (process.stdout.isTTY) {
+if (isTTY) {
   process.stdout.on('resize', () => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'resize', cols: process.stdout.columns, rows: process.stdout.rows }));
