@@ -59,14 +59,23 @@ function startTerminal({ hubUrl, deviceToken, shell, log }) {
   });
 
   ws.on("message", (raw) => {
+    let decoded = null;
     if (typeof raw === "string") {
+      decoded = raw;
+    } else {
+      decoded = raw.toString("utf8");
+    }
+    let handled = false;
+    if (decoded) {
       try {
-        const m = JSON.parse(raw);
+        const m = JSON.parse(decoded);
         if (m.type === "resize" && pty) {
           pty.resize(Number(m.cols) || 80, Number(m.rows) || 24);
+          handled = true;
         }
       } catch {}
-    } else {
+    }
+    if (!handled && typeof raw !== "string") {
       if (pty) pty.write(raw.toString("utf8"));
     }
   });

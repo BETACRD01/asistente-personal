@@ -106,6 +106,22 @@ if IS_POSIX:
                     pass
                 return
             try:
+                decoded = raw.decode("utf-8")
+            except Exception:
+                decoded = None
+            if decoded is not None:
+                try:
+                    control = json.loads(decoded)
+                    if control.get("type") == "resize":
+                        _set_size(
+                            self._master,
+                            int(control.get("cols", 80)),
+                            int(control.get("rows", 24)),
+                        )
+                        return
+                except (ValueError, TypeError):
+                    pass
+            try:
                 os.write(self._master, raw)
             except OSError:
                 pass
@@ -166,8 +182,23 @@ elif IS_WINDOWS:
                     return
                 try:
                     if isinstance(raw, bytes):
-                        raw = raw.decode("utf-8", errors="replace")
-                    self._proc.write(raw)
+                        raw_str = raw.decode("utf-8", errors="replace")
+                    else:
+                        raw_str = raw
+                except Exception:
+                    raw_str = ""
+                try:
+                    control = json.loads(raw_str)
+                    if control.get("type") == "resize":
+                        self._proc.set_size(
+                            int(control.get("cols", 80)),
+                            int(control.get("rows", 24)),
+                        )
+                        return
+                except (ValueError, TypeError):
+                    pass
+                try:
+                    self._proc.write(raw_str)
                 except Exception:
                     pass
 
