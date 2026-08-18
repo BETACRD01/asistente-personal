@@ -5,7 +5,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build:mac": "electron-builder --mac dir"
+    "build:mac": "electron-builder --mac dir",
+    "build:win": "electron-builder --win portable",
+    "build:linux": "electron-builder --linux AppImage"
   },
   "build": {
     "appId": "com.agentrelay.desktop",
@@ -22,6 +24,17 @@
         "dir"
       ],
       "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
     },
     "directories": {
       "output": "dist"

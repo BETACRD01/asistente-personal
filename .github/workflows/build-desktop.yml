@@ -1,0 +1,44 @@
+name: Build Desktop App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['desktop/**']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: build:win
+            artifact: AgentRelay-Windows
+            pattern: desktop/dist/*.exe
+          - os: ubuntu-latest
+            script: build:linux
+            artifact: AgentRelay-Linux
+            pattern: desktop/dist/*.AppImage
+          - os: macos-latest
+            script: build:mac
+            artifact: AgentRelay-macOS
+            pattern: desktop/dist/mac*/AgentRelay.app
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.pattern }}
+          if-no-files-found: error
