@@ -78,14 +78,22 @@ ipcMain.handle("server:decide", (_e, payload) => {
   return true;
 });
 
-ipcMain.handle("terminal:native", () => {
+ipcMain.handle("terminal:open", (_e, { hub, token, device, isLocal }) => {
   if (process.platform !== "darwin") return false;
-  const cmd =
-    'tmux new-session -d -s agent 2>/dev/null; ' +
-    'osascript -e \'tell application "Terminal" to do script "tmux attach -t agent"\'; ' +
-    'osascript -e \'tell application "Terminal" to activate\'';
+  let cmd = "";
+  if (isLocal) {
+    cmd =
+      'tmux new-session -d -s agent 2>/dev/null; ' +
+      'osascript -e \'tell application "Terminal" to do script "tmux attach -t agent"\'; ' +
+      'osascript -e \'tell application "Terminal" to activate\'';
+  } else {
+    const cliPath = require("path").join(__dirname, "server", "cli.js");
+    cmd =
+      `osascript -e 'tell application "Terminal" to do script "env ELECTRON_RUN_AS_NODE=1 \\"${process.execPath}\\" \\"${cliPath}\\" \\"${hub}\\" \\"${token}\\" \\"${device}\\""'; ` +
+      `osascript -e 'tell application "Terminal" to activate'`;
+  }
   exec(cmd, { shell: "/bin/bash" }, (err) => {
-    if (err) console.error("[terminal:native]", err.message);
+    if (err) console.error("[terminal:open]", err.message);
   });
   return true;
 });

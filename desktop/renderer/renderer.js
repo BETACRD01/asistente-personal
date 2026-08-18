@@ -155,68 +155,15 @@ function connect() {
   startServer();
 
   const dev = selectedDevice || token;
+  const isLocal = dev === token;
 
-  // Conectar a ESTA máquina -> abrir la Terminal nativa (tmux), no la de la app
-  if (dev === token && window.api) {
+  if (window.api) {
     $("terminal").style.display = "none";
-    setStatus("abriendo la Terminal nativa de la Mac…", "#fbbf24");
-    window.api.openNative().then(() => setStatus("Terminal nativa abierta", "#4ade80"));
-    return;
-  }
-
-  $("terminal").style.display = "block";
-
-  const url = `${hub}/ws/term?token=${encodeURIComponent(token)}&device=${encodeURIComponent(dev)}`;
-
-  if (!term) {
-    term = new Terminal({
-      fontSize: 13,
-      cursorBlink: true,
-      theme: { background: "#101014" },
-    });
-    fitAddon = new FitAddon.FitAddon();
-    term.loadAddon(fitAddon);
-    term.open($("terminal"));
-    fitAddon.fit();
-
-    term.onData((data) => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(new TextEncoder().encode(data));
-      }
+    setStatus(isLocal ? "abriendo Terminal nativa (esta máquina)…" : "abriendo Terminal nativa (otra máquina)…", "#fbbf24");
+    window.api.openNative({ hub, token, device: dev, isLocal }).then(() => {
+      setStatus("Terminal nativa abierta", "#4ade80");
     });
   }
-
-  setStatus(dev === token ? "conectando (esta máquina)..." : "conectando a otra máquina...", "#fbbf24");
-
-  ws = new WebSocket(url);
-  ws.binaryType = "arraybuffer";
-
-  ws.onopen = () => {
-    setStatus(dev === token ? "conectado" : "conectado a otra máquina", "#4ade80");
-    setTimeout(() => {
-      fitAddon.fit();
-      sendResize();
-    }, 50);
-  };
-
-  ws.onmessage = (ev) => {
-    if (ev.data instanceof ArrayBuffer) {
-      term.write(new Uint8Array(ev.data));
-    } else if (typeof ev.data === "string") {
-      try {
-        const msg = JSON.parse(ev.data);
-        if (msg.type === "status") {
-          if (msg.state === "offline") {
-            setStatus("esa máquina está offline", "#f87171");
-          } else if (msg.state === "connected") {
-            setStatus("conectado", "#4ade80");
-          }
-        }
-      } catch (_) {
-        term.write(ev.data);
-      }
-    }
-  };
 
   ws.onclose = () => setStatus("desconectado", "#9a9a9a");
   ws.onerror = () => setStatus("error de conexion", "#f87171");
