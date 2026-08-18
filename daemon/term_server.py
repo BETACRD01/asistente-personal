@@ -389,7 +389,22 @@ async def req_bridge() -> None:
             await asyncio.sleep(5)
 
 
+def _clear_port(port: int) -> None:
+    """Si el puerto esta ocupado por un daemon previo, lo mata (evita SystemExit 3)."""
+    if os.name == "nt":
+        return
+    try:
+        out = subprocess.check_output(["lsof", "-ti", f"TCP:{port}"], text=True)
+    except Exception:
+        return
+    for pid in out.split():
+        if pid.isdigit() and int(pid) != os.getpid():
+            logger.warning("puerto %s ocupado por pid %s; lo mato", port, pid)
+            os.kill(int(pid), 9)
+
+
 async def main() -> None:
+    _clear_port(PORT)
     config = uvicorn.Config(
         app,
         host="0.0.0.0",
