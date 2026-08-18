@@ -181,6 +181,13 @@ body {
   color: #8b95a7;
 }
 
+.hint {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: #6b7a90;
+}
+
 #terminal {
   flex: 1 1 auto;
   min-height: 0;
