@@ -90,6 +90,15 @@ ipcMain.handle("terminal:native", () => {
   return true;
 });
 
+ipcMain.handle("terminal:kill", () => {
+  if (process.platform !== "darwin") return false;
+  exec("tmux kill-session -t agent 2>/dev/null; echo $?", { shell: "/bin/bash" }, (err, stdout) => {
+    if (err) console.error("[terminal:kill]", err.message);
+    if (win) win.webContents.send("terminal:kill-done", (stdout || "").trim() === "0");
+  });
+  return true;
+});
+
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   createWindow();

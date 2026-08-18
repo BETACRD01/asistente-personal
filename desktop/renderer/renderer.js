@@ -17,6 +17,7 @@ const reqKind = $("reqkind");
 const reqOk = $("reqok");
 const reqNo = $("reqno");
 const copyCode = $("copycode");
+const killTerm = $("killterm");
 
 let ws = null;
 let term = null;
@@ -96,7 +97,7 @@ async function scanDevices() {
       const flags = (d.terminal ? "terminal" : "") + (d.tunnel ? "+tunel" : "") + (!d.terminal && !d.tunnel ? "offline" : "");
       const opt = document.createElement("option");
       opt.value = d.device;
-      opt.textContent = `${shortTok(d.device)}  [${flags}]`;
+      opt.textContent = `${d.name || shortTok(d.device)}  [${flags}]`;
       sel.appendChild(opt);
     }
     if ((data.devices || []).some((d) => d.device === token2)) {
@@ -264,6 +265,18 @@ reqNo.addEventListener("click", () => {
   if (window.api) window.api.decide(false);
   reqModal.classList.add("hidden");
 });
+
+killTerm.addEventListener("click", () => {
+  if (!window.api) return;
+  setStatus("cerrando sesión de terminal…", "#fbbf24");
+  window.api.killNative();
+});
+
+if (window.api) {
+  window.api.onKillDone((ok) => {
+    setStatus(ok ? "sesión de terminal cerrada" : "no había sesión activa", ok ? "#f87171" : "#8b95a7");
+  });
+}
 
 if (window.api) {
   window.api.onRequest((req) => {

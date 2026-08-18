@@ -247,7 +247,10 @@ async def hub_bridge() -> None:
     """Mantiene viva la conexion con el hub para el terminal (acceso desde cualquier red)."""
     if not HAS_PTY or not TerminalSessionClass:
         return
-    headers = {"Authorization": f"Bearer {settings.device_token}"}
+    headers = {
+        "Authorization": f"Bearer {settings.device_token}",
+        "X-Device-Name": settings.device_name
+    }
     while True:
         _hb("term")
         try:
@@ -304,7 +307,10 @@ async def _tcp_pump_tcp_to_ws(
 
 async def tcp_bridge() -> None:
     """Puente TCP Mac <-> hub (p. ej. SSH a :22); varias conexiones por conn_id."""
-    headers = {"Authorization": f"Bearer {settings.device_token}"}
+    headers = {
+        "Authorization": f"Bearer {settings.device_token}",
+        "X-Device-Name": settings.device_name
+    }
     while True:
         _hb("tcp")
         try:
@@ -365,7 +371,10 @@ async def tcp_bridge() -> None:
 
 async def req_bridge() -> None:
     """Canal de peticiones del hub: auto-acepta conexiones (daemon sin interfaz)."""
-    headers = {"Authorization": f"Bearer {settings.device_token}"}
+    headers = {
+        "Authorization": f"Bearer {settings.device_token}",
+        "X-Device-Name": settings.device_name
+    }
     while True:
         _hb("req")
         try:

@@ -53,11 +53,15 @@ known_devices: set[str] = set(settings.device_tokens)
 MIN_TOKEN_LEN = 12
 
 
-def _register(token: str | None) -> bool:
+device_names: dict[str, str] = {}
+
+def _register(token: str | None, name: str = "") -> bool:
     """Auto-registra una máquina. Su token es su identidad en el hub."""
     if not token or len(token) < MIN_TOKEN_LEN:
         return False
     known_devices.add(token)
+    if name:
+        device_names[token] = name
     return True
 
 
@@ -111,6 +115,7 @@ async def devices(token: str | None = None):
         "devices": [
             {
                 "device": dev,
+                "name": device_names.get(dev, ""),
                 "terminal": dev in mac_term_sockets,
                 "tunnel": dev in mac_tcp_sockets,
             }
@@ -149,7 +154,8 @@ async def ws_mac_req(websocket: WebSocket, token: str | None = None):
     auth = websocket.headers.get("authorization")
     if not token and auth and auth.startswith("Bearer "):
         token = auth.removeprefix("Bearer ").strip()
-    if not token or not (_register(token) or login_device_token(token)):
+    name = websocket.headers.get("x-device-name", "")
+    if not token or not (_register(token, name) or login_device_token(token)):
         await websocket.close(code=4001, reason="invalid device token")
         return
 
@@ -196,7 +202,8 @@ async def ws_mac_term(websocket: WebSocket, token: str | None = None):
     auth = websocket.headers.get("authorization")
     if not token and auth and auth.startswith("Bearer "):
         token = auth.removeprefix("Bearer ").strip()
-    if not token or not (_register(token) or login_device_token(token)):
+    name = websocket.headers.get("x-device-name", "")
+    if not token or not (_register(token, name) or login_device_token(token)):
         await websocket.close(code=4001, reason="invalid device token")
         return
 
@@ -303,7 +310,8 @@ async def ws_mac_tcp(websocket: WebSocket, token: str | None = None):
     auth = websocket.headers.get("authorization")
     if not token and auth and auth.startswith("Bearer "):
         token = auth.removeprefix("Bearer ").strip()
-    if not token or not (_register(token) or login_device_token(token)):
+    name = websocket.headers.get("x-device-name", "")
+    if not token or not (_register(token, name) or login_device_token(token)):
         await websocket.close(code=4001, reason="invalid device token")
         return
 

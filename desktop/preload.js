@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld("api", {
   onRequest: (cb) => ipcRenderer.on("server:request", (_e, req) => cb(req)),
   decide: (ok) => ipcRenderer.invoke("server:decide", { ok }),
   openNative: () => ipcRenderer.invoke("terminal:native"),
+  killNative: () => ipcRenderer.invoke("terminal:kill"),
+  onKillDone: (cb) => ipcRenderer.on("terminal:kill-done", (_e, ok) => cb(ok)),
 });
