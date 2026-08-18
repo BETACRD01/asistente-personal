@@ -30,13 +30,6 @@ body {
   color: #7dd3fc;
 }
 
-#brandicon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  object-fit: cover;
-}
-
 #brandface {
   display: flex;
   flex-direction: column;
