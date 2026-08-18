@@ -5,6 +5,21 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
+
+if [ ! -f "$DIR/term_server.py" ]; then
+  # Modo remoto (una linea): descarga el daemon y lo instala sin clonar el repo.
+  TARGET="${AGENTRELAY_DIR:-$HOME/.agentrelay}"
+  mkdir -p "$TARGET"
+  echo "== descargando daemon a $TARGET"
+  BASE="https://raw.githubusercontent.com/BETACRD01/asistente-personal/main/daemon"
+  for f in term_server.py config.py requirements.txt; do
+    curl -fsSL "$BASE/$f" -o "$TARGET/$f" \
+      || { echo "error: no se pudo descargar $f (¿hay internet?)"; exit 1; }
+  done
+  DIR="$TARGET"
+  cd "$DIR"
+fi
+
 echo "== daemon dir: $DIR"
 
 PY=python3
