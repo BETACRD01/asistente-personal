@@ -14,6 +14,7 @@ echo [3/4] Instalando dependencias...
 call .venv\Scripts\activate.bat
 python -m pip install -q --upgrade pip
 python -m pip install -q -r requirements.txt || (echo Falla al instalar dependencias & pause & exit /b 1)
+python -m pip install -q winpty || echo (winpty no disponible; el terminal quedara desactivado)
 
 if not exist .env (
   echo [4/4] Generando .env con tokens nuevos...
