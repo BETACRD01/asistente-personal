@@ -19,6 +19,13 @@
   <div id="srvbar">
     <span id="srvstatus">servidor: parado</span>
   </div>
+  <div id="devbar">
+    <button id="scan" title="Listar maquinas conectadas al hub">Buscar máquinas</button>
+    <select id="devices">
+      <option value="">(elegir máquina)</option>
+    </select>
+    <label><input type="checkbox" id="serve" checked /> Servir esta máquina</label>
+  </div>
   <div id="terminal"></div>
 
   <script src="../node_modules/xterm/lib/xterm.js"></script>

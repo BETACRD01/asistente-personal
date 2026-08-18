@@ -74,6 +74,50 @@ body {
   font-weight: 600;
 }
 
+#devbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  background: #121217;
+  border-bottom: 1px solid #2a2a31;
+  font-size: 11px;
+  color: #9a9a9a;
+  min-height: 24px;
+}
+
+#devbar button {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: #334155;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+#devbar button:hover {
+  background: #475569;
+}
+
+#devbar select {
+  flex: 1;
+  padding: 3px 6px;
+  border-radius: 5px;
+  border: 1px solid #333;
+  background: #0d0d11;
+  color: #eee;
+  font-size: 11px;
+  max-width: 320px;
+}
+
+#devbar label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
 #terminal {
   height: calc(100% - 70px);
   padding: 4px 0;

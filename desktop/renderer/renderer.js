@@ -7,11 +7,15 @@ const connectBtn = $("connect");
 const reconnectBtn = $("reconnect");
 const statusEl = $("status");
 const srvEl = $("srvstatus");
+const scanBtn = $("scan");
+const devicesSel = $("devices");
+const serveChk = $("serve");
 
 let ws = null;
 let term = null;
 let fitAddon = null;
 let serverOn = false;
+let selectedDevice = "";
 
 function setStatus(text, color) {
   statusEl.textContent = text;
@@ -35,9 +39,46 @@ function saveSettings() {
   localStorage.setItem("agentrelay.sshport", sshportInput.value.trim());
 }
 
+function shortTok(t) {
+  return t.length > 12 ? "…" + t.slice(-12) : t;
+}
+
 function sendResize() {
   if (ws && ws.readyState === WebSocket.OPEN && term) {
     ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+  }
+}
+
+async function scanDevices() {
+  const token = deviceInput.value.trim();
+  if (!token) {
+    setStatus("falta el DEVICE_TOKEN", "#f87171");
+    return;
+  }
+  const httpUrl = baseUrl().replace(/^wss?/, "https");
+  try {
+    const res = await fetch(`${httpUrl}/devices?token=${encodeURIComponent(token)}`);
+    if (!res.ok) {
+      setSrv("no se pudo listar maquinas (HTTP " + res.status + ")", "#f87171");
+      return;
+    }
+    const data = await res.json();
+    const sel = devicesSel;
+    sel.innerHTML = '<option value="">(elegir máquina)</option>';
+    const token2 = deviceInput.value.trim();
+    for (const d of data.devices || []) {
+      const flags = (d.terminal ? "terminal" : "") + (d.tunnel ? "+tunel" : "") + (!d.terminal && !d.tunnel ? "offline" : "");
+      const opt = document.createElement("option");
+      opt.value = d.device;
+      opt.textContent = `${shortTok(d.device)}  [${flags}]`;
+      sel.appendChild(opt);
+    }
+    if ((data.devices || []).some((d) => d.device === token2)) {
+      sel.value = token2;
+    }
+    setSrv(`maquinas: ${(data.devices || []).length}`, "#4ade80");
+  } catch (e) {
+    setSrv("error al buscar: " + e.message, "#f87171");
   }
 }
 
@@ -65,7 +106,7 @@ function stopServer() {
 if (window.api) {
   window.api.onStatus((msg) => {
     if (msg.includes("conectado al hub")) {
-      setSrv(msg.startsWith("tunel") ? "servidor: tunel + terminal activos" : "servidor: " + msg, "#4ade80");
+      setSrv("servidor: " + msg, "#4ade80");
     } else if (msg.includes("error") || msg.includes("salio")) {
       setSrv("servidor: " + msg, "#f87171");
     } else {
@@ -84,9 +125,16 @@ function connect() {
     return;
   }
   saveSettings();
-  startServer();
 
-  const url = `${hub}/ws/term?token=${encodeURIComponent(token)}&device=${encodeURIComponent(token)}`;
+  if (serveChk.checked) {
+    startServer();
+  } else {
+    stopServer();
+  }
+
+  const dev = selectedDevice || token;
+
+  const url = `${hub}/ws/term?token=${encodeURIComponent(token)}&device=${encodeURIComponent(dev)}`;
 
   if (!term) {
     term = new Terminal({
@@ -106,13 +154,13 @@ function connect() {
     });
   }
 
-  setStatus("conectando...", "#fbbf24");
+  setStatus(dev === token ? "conectando (esta máquina)..." : "conectando a otra máquina...", "#fbbf24");
 
   ws = new WebSocket(url);
   ws.binaryType = "arraybuffer";
 
   ws.onopen = () => {
-    setStatus("conectado", "#4ade80");
+    setStatus(dev === token ? "conectado" : "conectado a otra máquina", "#4ade80");
     setTimeout(() => {
       fitAddon.fit();
       sendResize();
@@ -127,7 +175,7 @@ function connect() {
         const msg = JSON.parse(ev.data);
         if (msg.type === "status") {
           if (msg.state === "offline") {
-            setStatus("la Mac esta offline", "#f87171");
+            setStatus("esa máquina está offline", "#f87171");
           } else if (msg.state === "connected") {
             setStatus("conectado", "#4ade80");
           }
@@ -163,6 +211,11 @@ window.addEventListener("resize", () => {
 
 connectBtn.addEventListener("click", connect);
 reconnectBtn.addEventListener("click", connect);
+scanBtn.addEventListener("click", scanDevices);
+devicesSel.addEventListener("change", () => {
+  selectedDevice = devicesSel.value || "";
+  setStatus("máquina elegida: " + (selectedDevice ? shortTok(selectedDevice) : "esta máquina"), "#fbbf24");
+});
 
 hubInput.value = localStorage.getItem("agentrelay.hub") || "https://agentrelay.duckdns.org";
 deviceInput.value = localStorage.getItem("agentrelay.device") || "";

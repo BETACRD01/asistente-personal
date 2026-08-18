@@ -52,6 +52,30 @@ async def health():
     return {"status": "ok", "build": "demo-4"}
 
 
+@app.get("/devices")
+async def devices(token: str | None = None):
+    """Lista las maquinas registradas y su estado (terminal/tunel online)."""
+    if not token:
+        raise HTTPException(status_code=401, detail="missing token")
+    is_app = False
+    try:
+        is_app = decode_token(token).get("sub") == "app"
+    except Exception:
+        pass
+    if not is_app and not login_device_token(token):
+        raise HTTPException(status_code=401, detail="invalid token")
+    return {
+        "devices": [
+            {
+                "device": dev,
+                "terminal": dev in mac_term_sockets,
+                "tunnel": dev in mac_tcp_sockets,
+            }
+            for dev in settings.device_tokens
+        ]
+    }
+
+
 @app.get("/term", response_class=HTMLResponse)
 async def term_page():
     return (STATIC_DIR / "term.html").read_text()
