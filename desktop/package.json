@@ -4,13 +4,31 @@
   "description": "Cliente de escritorio del terminal remoto de la Mac (via hub)",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build:mac": "electron-builder --mac dir"
+  },
+  "build": {
+    "appId": "com.agentrelay.desktop",
+    "productName": "AgentRelay",
+    "files": [
+      "main.js",
+      "renderer/**",
+      "node_modules/**"
+    ],
+    "mac": {
+      "target": ["dir"],
+      "category": "public.app-category.developer-tools"
+    },
+    "directories": {
+      "output": "dist"
+    }
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
     "xterm": "^5.3.0"
   },
   "devDependencies": {
-    "electron": "^33.2.0"
+    "electron": "^33.2.0",
+    "electron-builder": "^26.15.3"
   }
 }
