@@ -7,10 +7,17 @@ La app puede **servir** el terminal/túnel de esta máquina (marcar *Servir esta
 máquina*) o actuar solo como **cliente**: ver el terminal propio o **Buscar
 máquinas** para conectarse al terminal de otra máquina registrada en el hub.
 
+**Código de máquina (tipo AnyDesk):** cada app muestra su *código* (su
+`DEVICE_TOKEN`). Para conectarte a otra máquina puedes escribir su código en
+*Conectar a código* o elegirla de *Buscar máquinas*. El hub le avisa a la
+máquina remota y **esa máquina decide**: sale una ventana *¿Permitir
+conexión?* con Aceptar/Rechazar.
+
 Modo recomendado: el **daemon de Python** (`term_server.py`, servicio
 `com.agentrelay.term`) queda corriendo 24/7 para que el celular entre por
 `ssh mac`; la app se usa como cliente con *Servir esta máquina* **desmarcado**
-(evita competir con el daemon por el mismo token).
+(evita competir con el daemon por el mismo token). El daemon auto-acepta las
+peticiones (sin interfaz).
 
 ## Requisitos
 
