@@ -174,6 +174,24 @@ elif IS_WINDOWS:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("daemon.term")
+
+
+async def _watchdog(ws: Any, stop: asyncio.Event) -> None:
+    """Cierra la conexion si el hub deja de responder pings (evita quedar colgado
+    tras un redeploy o un corte de red que no cierra el TCP)."""
+    while not stop.is_set():
+        await asyncio.sleep(20)
+        try:
+            pong = await asyncio.wait_for(ws.ping(), timeout=10)
+            await asyncio.wait_for(pong, timeout=10)
+        except Exception:
+            logger.warning("watchdog: hub sin respuesta; reconectando")
+            stop.set()
+            try:
+                await ws.close()
+            except Exception:
+                pass
+            return
 if not HAS_PTY:
     logger.warning("Soporte PTY no disponible en este sistema.")
 
@@ -227,6 +245,8 @@ async def hub_bridge() -> None:
                 HUB_TERM_URL, additional_headers=headers, ping_interval=20
             ) as ws:
                 logger.info("terminal: conectado al hub")
+                stop = asyncio.Event()
+                watchdog = asyncio.create_task(_watchdog(ws, stop))
                 session = TerminalSessionClass()
                 send_task = asyncio.create_task(session.pump(ws.send))
                 try:
@@ -234,6 +254,8 @@ async def hub_bridge() -> None:
                         is_text = isinstance(raw, str)
                         await session.handle(raw, is_text)
                 finally:
+                    stop.set()
+                    watchdog.cancel()
                     send_task.cancel()
                     session.close()
         except Exception as exc:
@@ -279,6 +301,8 @@ async def tcp_bridge() -> None:
                 HUB_TCP_URL, additional_headers=headers, ping_interval=20
             ) as ws:
                 logger.info("tcp: conectado al hub")
+                stop = asyncio.Event()
+                watchdog = asyncio.create_task(_watchdog(ws, stop))
                 conns: dict[str, asyncio.StreamWriter] = {}
                 try:
                     async for raw in ws:
@@ -315,6 +339,8 @@ async def tcp_bridge() -> None:
                                 except Exception:
                                     pass
                 finally:
+                    stop.set()
+                    watchdog.cancel()
                     for writer in conns.values():
                         try:
                             writer.close()
