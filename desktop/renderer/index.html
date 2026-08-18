@@ -16,22 +16,22 @@
   <section id="panels">
     <div class="panel">
       <h3 class="ptitle">Esta máquina</h3>
-      <div class="row">
+      <div class="vrow">
         <label>Código de esta máquina</label>
         <div class="codebox">
           <code id="mycode">—</code>
           <button id="copycode" title="Copiar código">copiar</button>
         </div>
       </div>
-      <div class="row">
+      <div class="vrow">
         <label>Device token</label>
         <input id="device" placeholder="tu DEVICE_TOKEN" spellcheck="false" />
       </div>
-      <div class="row">
+      <div class="vrow">
         <label>Puerto SSH local</label>
         <input id="sshport" placeholder="22" spellcheck="false" />
       </div>
-      <div class="row row-between">
+      <div class="vrow">
         <label class="chk"><input type="checkbox" id="serve" /> Servir esta máquina</label>
         <span id="srvstatus" class="mini">parado</span>
       </div>
@@ -39,21 +39,27 @@
 
     <div class="panel">
       <h3 class="ptitle">Conectar</h3>
-      <div class="row">
+      <div class="vrow">
         <label>Hub</label>
         <input id="hub" placeholder="https://agentrelay.duckdns.org" spellcheck="false" />
       </div>
-      <div class="row">
-        <button id="scan">Buscar máquinas</button>
-        <select id="devices">
-          <option value="">(elegir máquina)</option>
-        </select>
+      <div class="vrow">
+        <label>Máquinas registradas</label>
+        <div class="hrow">
+          <button id="scan">Buscar máquinas</button>
+          <select id="devices">
+            <option value="">(elegir máquina)</option>
+          </select>
+        </div>
       </div>
-      <div class="row">
-        <input id="codeconnect" placeholder="código de otra máquina" spellcheck="false" />
-        <button id="codeconnectbtn">Conectar a código</button>
+      <div class="vrow">
+        <label>Conectar con código de otra máquina</label>
+        <div class="hrow">
+          <input id="codeconnect" placeholder="código" spellcheck="false" />
+          <button id="codeconnectbtn">Conectar</button>
+        </div>
       </div>
-      <div class="row row-actions">
+      <div class="hrow">
         <button id="connect" class="primary">Conectar</button>
         <button id="reconnect" title="Reconectar">↻</button>
       </div>
