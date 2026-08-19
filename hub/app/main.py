@@ -120,7 +120,6 @@ async def devices(token: str | None = None):
                 "tunnel": dev in mac_tcp_sockets,
             }
             for dev in sorted(known_devices)
-            if (dev in mac_term_sockets or dev in mac_tcp_sockets) or device_names.get(dev)
         ]
     }
 
