@@ -72,10 +72,19 @@ function startTerminal({ hubUrl, deviceToken, shell, log }) {
         if (m.type === "resize" && pty) {
           pty.resize(Number(m.cols) || 80, Number(m.rows) || 24);
           handled = true;
+        } else if (m.type === "kill") {
+          if (pty) {
+            try { pty.kill(); } catch {}
+            pty = null;
+          }
+          try { execSync("tmux kill-session -t agent 2>/dev/null || true"); } catch {}
+          log("terminal: sesion eliminada por el cliente");
+          handled = true;
         }
       } catch {}
     }
     if (!handled && typeof raw !== "string") {
+      if (!pty) openPty();
       if (pty) pty.write(raw.toString("utf8"));
     }
   });

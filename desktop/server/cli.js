@@ -75,6 +75,18 @@ ws.on('error', (err) => {
   process.exit(1);
 });
 
+function shutdown(code) {
+  // Eliminar el terminal en la máquina remota al cerrar esta ventana
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try { ws.send(JSON.stringify({ type: 'kill' })); } catch {}
+    setTimeout(() => { try { ws.close(); } catch {} }, 300);
+  }
+  setTimeout(() => process.exit(code), 400);
+}
+process.on('SIGINT', () => shutdown(130));
+process.on('SIGTERM', () => shutdown(0));
+process.on('SIGHUP', () => shutdown(129));
+
 if (isTTY) {
   process.stdout.on('resize', () => {
     if (ws.readyState === WebSocket.OPEN) {

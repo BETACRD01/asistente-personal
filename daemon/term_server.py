@@ -38,6 +38,10 @@ from config import settings
 IS_POSIX = os.name == "posix"
 IS_WINDOWS = os.name == "nt"
 
+
+class SessionKilled(Exception):
+    """El cliente pidio eliminar la sesion terminal remota (cerro su ventana)."""
+
 HAS_PTY = False
 TerminalSessionClass = None
 
@@ -96,12 +100,18 @@ if IS_POSIX:
             if is_text:
                 try:
                     control = json.loads(raw)
-                    if control.get("type") == "resize":
+                    ctype = control.get("type")
+                    if ctype == "resize":
                         _set_size(
                             self._master,
                             int(control.get("cols", 80)),
                             int(control.get("rows", 24)),
                         )
+                    elif ctype == "kill":
+                        self.close()
+                        raise SessionKilled()
+                except SessionKilled:
+                    raise
                 except (ValueError, TypeError):
                     pass
                 return
@@ -172,11 +182,17 @@ elif IS_WINDOWS:
                 if is_text:
                     try:
                         control = json.loads(raw)
-                        if control.get("type") == "resize":
+                        ctype = control.get("type")
+                        if ctype == "resize":
                             self._proc.set_size(
                                 int(control.get("cols", 80)),
                                 int(control.get("rows", 24)),
                             )
+                        elif ctype == "kill":
+                            self.close()
+                            raise SessionKilled()
+                    except SessionKilled:
+                        raise
                     except (ValueError, TypeError):
                         pass
                     return
@@ -307,6 +323,8 @@ async def hub_bridge() -> None:
                     watchdog.cancel()
                     send_task.cancel()
                     session.close()
+        except SessionKilled:
+            logger.info("terminal: sesion eliminada por el cliente; sesion nueva lista")
         except Exception as exc:
             logger.warning("terminal: conexion hub caida (%s); reintento en 5s", exc)
             await asyncio.sleep(5)
