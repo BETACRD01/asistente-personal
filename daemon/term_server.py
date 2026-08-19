@@ -216,11 +216,15 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 logger = logging.getLogger("daemon.term")
 
 
-async def _watchdog(ws: Any, stop: asyncio.Event) -> None:
-    """Cierra la conexion si el hub deja de responder pings (evita quedar colgado
-    tras un redeploy o un corte de red que no cierra el TCP)."""
+async def _watchdog(ws: Any, stop: asyncio.Event, name: str = "") -> None:
+    """Marca actividad del puente y cierra la conexion si el hub deja de
+    responder pings (evita quedar colgado tras un redeploy o un corte de red
+    que no cierra el TCP). Tambien evita que el supervisor reinicie el daemon
+    por falsa inactividad mientras el puente esta conectado pero en calma."""
     while not stop.is_set():
         await asyncio.sleep(20)
+        if name:
+            _hb(name)
         try:
             pong = await asyncio.wait_for(ws.ping(), timeout=10)
             await asyncio.wait_for(pong, timeout=10)
@@ -291,7 +295,7 @@ async def hub_bridge() -> None:
             ) as ws:
                 logger.info("terminal: conectado al hub")
                 stop = asyncio.Event()
-                watchdog = asyncio.create_task(_watchdog(ws, stop))
+                watchdog = asyncio.create_task(_watchdog(ws, stop, "term"))
                 session = TerminalSessionClass()
                 send_task = asyncio.create_task(session.pump(ws.send))
                 try:
@@ -351,7 +355,7 @@ async def tcp_bridge() -> None:
             ) as ws:
                 logger.info("tcp: conectado al hub")
                 stop = asyncio.Event()
-                watchdog = asyncio.create_task(_watchdog(ws, stop))
+                watchdog = asyncio.create_task(_watchdog(ws, stop, "tcp"))
                 conns: dict[str, asyncio.StreamWriter] = {}
                 try:
                     async for raw in ws:
@@ -415,7 +419,7 @@ async def req_bridge() -> None:
             ) as ws:
                 logger.info("peticiones: canal listo (auto-acepta)")
                 stop = asyncio.Event()
-                watchdog = asyncio.create_task(_watchdog(ws, stop))
+                watchdog = asyncio.create_task(_watchdog(ws, stop, "req"))
                 try:
                     async for raw in ws:
                         if not isinstance(raw, str):
