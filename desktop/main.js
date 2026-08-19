@@ -103,7 +103,8 @@ ipcMain.handle("terminal:open", (_e, { hub, token, device, isLocal }) => {
     const tmpScript = path.join(os.tmpdir(), `agentrelay_${id}.sh`);
     let scriptContent = "#!/bin/bash\n";
     if (isLocal) {
-      scriptContent += `tmux attach -t agent || tmux new -s agent\n`;
+      const sname = `agent_${id}`;
+      scriptContent += `trap 'tmux kill-session -t ${sname} 2>/dev/null' HUP TERM EXIT\ntmux new-session -d -s ${sname} 2>/dev/null\ntmux attach -t ${sname}\n`;
     } else {
       scriptContent += `env ELECTRON_RUN_AS_NODE=1 "${process.execPath}" "${cliPath}" "${hub}" "${token}" "${device}"\n`;
     }
@@ -128,7 +129,8 @@ ipcMain.handle("terminal:open", (_e, { hub, token, device, isLocal }) => {
     const tmpScript = path.join(os.tmpdir(), `agentrelay_${id}.sh`);
     let scriptContent = "#!/bin/bash\n";
     if (isLocal) {
-      scriptContent += `tmux attach -t agent || tmux new -s agent\n`;
+      const sname = `agent_${id}`;
+      scriptContent += `trap 'tmux kill-session -t ${sname} 2>/dev/null' HUP TERM EXIT\ntmux new-session -d -s ${sname} 2>/dev/null\ntmux attach -t ${sname}\n`;
     } else {
       scriptContent += `env ELECTRON_RUN_AS_NODE=1 "${process.execPath}" "${cliPath}" "${hub}" "${token}" "${device}"\n`;
     }
