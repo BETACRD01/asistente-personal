@@ -6,7 +6,12 @@ const { spawn } = require("node-pty");
 
 function startTerminal({ hubUrl, deviceToken, shell, log }) {
   const url = `${hubUrl.replace(/\/+$/, "")}/ws/mac/term`;
-  const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${deviceToken}` } });
+  const ws = new WebSocket(url, {
+    headers: {
+      Authorization: `Bearer ${deviceToken}`,
+      "X-Device-Name": os.hostname(),
+    },
+  });
   let pty = null;
 
   function hasTmux() {

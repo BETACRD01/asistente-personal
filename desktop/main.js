@@ -5,6 +5,23 @@ const { startServer } = require("./server");
 const fs = require("fs");
 const os = require("os");
 
+function readDeviceToken() {
+  const candidates = [
+    path.join(os.homedir(), "Library", "Mobile Documents", "com~apple~CloudDocs", "asistente-terminal", "daemon.env"),
+    path.join(os.homedir(), "Developer", "asistente-personal", "daemon", ".env"),
+  ];
+  for (const f of candidates) {
+    try {
+      const txt = fs.readFileSync(f, "utf8");
+      const m = txt.match(/^DEVICE_TOKEN\s*=\s*(\S+)/m);
+      if (m && m[1]) return m[1];
+    } catch {}
+  }
+  return "";
+}
+
+ipcMain.handle("config:token", () => readDeviceToken());
+
 const logFile = path.join(os.tmpdir(), "agentrelay.log");
 try {
   fs.writeFileSync(logFile, "App started\n");

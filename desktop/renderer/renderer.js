@@ -142,7 +142,7 @@ if (window.api) {
   });
 }
 
-function connect() {
+async function connect() {
   disconnect();
 
   const hub = baseUrl();
@@ -152,7 +152,11 @@ function connect() {
     return;
   }
   saveSettings();
-  startServer();
+
+  const daemonTok = window.api ? await window.api.getDeviceToken() : "";
+  if (token !== daemonTok) {
+    startServer();
+  }
 
   const dev = selectedDevice || token;
   const isLocal = dev === token;
@@ -230,6 +234,14 @@ if (window.api) {
 
 hubInput.value = localStorage.getItem("agentrelay.hub") || "https://agentrelay.duckdns.org";
 deviceInput.value = localStorage.getItem("agentrelay.device2") || "";
+if (window.api) {
+  window.api.getDeviceToken().then((t) => {
+    if (t) {
+      deviceInput.value = t;
+      saveSettings();
+    }
+  });
+}
 if (!deviceInput.value) {
   deviceInput.value = genCode();
   saveSettings();

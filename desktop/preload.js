@@ -9,4 +9,5 @@ contextBridge.exposeInMainWorld("api", {
   openNative: (args) => ipcRenderer.invoke("terminal:open", args),
   killNative: () => ipcRenderer.invoke("terminal:kill"),
   onKillDone: (cb) => ipcRenderer.on("terminal:kill-done", (_e, ok) => cb(ok)),
+  getDeviceToken: () => ipcRenderer.invoke("config:token"),
 });
