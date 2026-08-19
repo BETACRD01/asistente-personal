@@ -50,8 +50,9 @@ ws.on('message', (data, isBinary) => {
       const msg = JSON.parse(data.toString());
       if (msg.type === 'status') {
         if (msg.state === 'offline') {
-          step("La máquina destino está offline", RED, "✕");
-          process.exit(1);
+          step("La máquina destino está offline ✕", RED, "");
+          step("Comprueba que esté encendida y con su app conectada.", DIM, "");
+          setTimeout(() => process.exit(1), 3000);
         } else if (msg.state === 'connected') {
           if (!established) {
             step("Conexión establecida", GREEN, "✓");
@@ -72,7 +73,8 @@ ws.on('close', () => {
 
 ws.on('error', (err) => {
   step(`Error de conexión: ${err.message}`, RED, "✕");
-  process.exit(1);
+  step("Revisa el código de la máquina y que esté online.", DIM, "");
+  setTimeout(() => process.exit(1), 3000);
 });
 
 function shutdown(code) {

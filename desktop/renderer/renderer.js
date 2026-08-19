@@ -154,12 +154,12 @@ async function connect() {
   saveSettings();
 
   const daemonTok = window.api ? await window.api.getDeviceToken() : "";
-  if (token !== daemonTok) {
+  if (!daemonTok) {
     startServer();
   }
 
   const dev = selectedDevice || token;
-  const isLocal = dev === token;
+  const isLocal = dev === (daemonTok || token);
 
   if (window.api) {
     setStatus(isLocal ? "abriendo Terminal nativa (esta máquina)…" : "abriendo Terminal nativa (otra máquina)…", "#fbbf24");
